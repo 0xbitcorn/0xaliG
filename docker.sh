@@ -4,18 +4,22 @@ name="0xalig"
 auth="$PWD/auth.json"
 
 usage() {
-    echo "Usage: $0 [command]"
-    echo
-    echo "  commands:"
-    echo "    start     | Run the bot normally"
-    echo "    build     | Build new code"
-    echo "    logs      | View logs of a running bot"
-    echo "    restart   | Rstart the bot"
-    echo "    stop      | Stop the bot"
-    echo "    kill      | Kill and remove the bot container"
-    echo "    local     | Run the container locally in a temporary state"
-    echo "    status    | Get status of container from Docker"
-    echo "    update    | Update code, rebuild, and restart the bot"
+cat <<EOF
+
+Usage: $0 [command]
+
+  commands:
+    start     | Run the bot normally
+    build     | Build new code
+    logs      | View logs of a running bot
+    restart   | Restart the bot
+    stop      | Stop the bot
+    kill      | Kill and remove the bot container
+    local     | Run the container locally in a temporary state
+    status    | Get status of container from Docker
+    update    | Update code, rebuild, and restart the bot
+
+EOF
 }
 
 run() {
