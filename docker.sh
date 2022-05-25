@@ -13,8 +13,8 @@ case $1 in
     update)
         git pull &&
         docker build -t $name . &&
-        docker stop $name >/dev/null &&
-        docker rm $name >/dev/null &&
+        docker stop $name >/dev/null
+        docker rm $name >/dev/null
         docker run -d --name $name -v $auth:/usr/src/app/auth.json $name
     ;;
     *) docker run -d --name $name -v $auth:/usr/src/app/auth.json $name;;
