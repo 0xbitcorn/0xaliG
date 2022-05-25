@@ -552,12 +552,13 @@ if(msg == '!help'){
 	.setDescription('If you have any questions or suggestions,\n please DM @BTCornBLAIQchnz')
 	.setThumbnail(botimg)
 	.setFooter({text: 'Git lernt up den drop sum bits! Biddup yo self! Respek!'})
-
-	await message.author.send({ embeds: [hEmbed] }).catch(() => {
+	try{
+		await message.author.send({ embeds: [hEmbed] });
+		message.react('📨');
+	} catch(err){
 		message.author.send("Yo, u iz haz dem DMs closed or sumthin.");
 		message.channel.send({ embeds: [hEmbed] });
-	});
-
+	}
 }
 
 
@@ -597,7 +598,6 @@ if(msg == '!help'){
 			} else{	
 				// Starting from a sent !auction message
 				// set status to dnd and post initial message	
-				message.fetchReference().then(repliedTo =>{
 
 				if(client.user.presence.status == 'dnd'){
 					if(dbmsg == 'NO CURRENT AUCTION'){
@@ -615,20 +615,26 @@ if(msg == '!help'){
 						message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
 						throw 'Parameter is not a valid url!';
 					}
-			
-
 						scrapetext = await scrape(nfturl);
-						//console.log(scrapetext + '');
 						title = scrapetext.split(',')[0];
-						//console.log(title + '');
-						//console.log(scrapetext.split(',')[0] + '');
-	
-						if(typeof repliedTo.attachments.size > 0){
-							console.log('image attached');
-							imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
+						
+						if(message.type === 'REPLY'){
+						await message.fetchReference().then(repliedTo =>{
+								if(repliedTo.attachments.size > 0){
+									imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
+								}else{
+									imgurl = scrapetext.split(',')[1];
+								}
+							}).catch (err =>{
+								console.log(err);
+								imgurl = scrapetext.split(',')[1];
+							});
 						}else{
-						//	console.log('no attached image');
-							imgurl = scrapetext.split(',')[1];
+							if(message.attachments.size >0){
+								imgurl = message.attachments.first().url;
+							} else{
+								imgurl = scrapetext.split(',')[1];
+							}
 						}
 
 						imgurl = encodeURI(imgurl);
@@ -757,13 +763,14 @@ if(msg == '!help'){
 
 							var nextupdate;	
 							//message.reply('hours: ' + hoursleft + " & minutes: " + minsleft);
-							if (hoursleft > 0 || (hoursleft = 0 && minsleft > 1)){
-								nextupdate = 60000;
+							if (duration/1000 > 60){
+								nextupdate = duration % 60000 + 60000;
 							} else {
 								nextupdate = 50000;
 							}
 							
-							//console.log(nextupdate);
+							//console.log('initial nextupdate: ' + nextupdate);
+							//console.log('initial duration: ' + duration);
 							
 				while(duration > 0 && killauction == false){
 								await sleep(nextupdate);
@@ -780,11 +787,11 @@ if(msg == '!help'){
 								let updateEmbed = await msgembed.embeds[0];
 								
 								duration = duration - nextupdate;
-								console.log(duration);				
+								//console.log(duration);				
 								if(duration >= 3*60000){ //more than 2 minutes
 									nextupdate = duration % 60000 + 60000;
-								} else if(duration > 69000 && duration < 2*60000){ //between 1 and 2 minutes
-									nextupdate = duration % 69000 + 69000;
+								} else if(duration > 69000){ //between 1 and 2 minutes
+									nextupdate = duration % 69000;
 								} else if(duration == 69000){
 									message.channel.send('69 SEX!!!');
 									nextupdate = 9000;
@@ -897,7 +904,7 @@ if(msg == '!help'){
 
 					
 									
-					if(duration/1000 > 60){
+					if(duration/1000 > 69 || duration/1000 == 60){
 							let dbchannel = await client.channels.cache.get(databasechannel);
 							let dbmsg = await dbchannel.messages.fetch(databasemsg);
 							let amsg = dbmsg.content;
@@ -924,7 +931,7 @@ if(msg == '!help'){
 								}
 							}
 					}
-					if(duration/1000 > 61){
+					if(duration/1000 > 60){
 						if(Math.floor(Math.random() * 100) > 85){
 							const attachment = new MessageAttachment(imgurl);
 							let randomhype = '>>> ' + randommsg('hype');
@@ -950,12 +957,7 @@ if(msg == '!help'){
 					killauction = false;
 			})();	
 				}					
-				}).catch (err =>{
-					console.log(err);
-					message.react('❌');
-					client.user.setStatus('online');
-					client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
-				});
+				
 			}
 		} else{
 			message.react('❌');
@@ -1012,7 +1014,11 @@ if(msg == '!help'){
 					
 					var startmsg = amsg.split(",")[0];
 					var currbid = amsg.split(",")[1];
-					bidder = message.author.username.split("#")[0];
+					if(currbid > highbid){
+						highbid = currbid;
+					}
+					var updatemsg = amsg.split(',')[4];
+					highbidder = message.author.username.split("#")[0];
 	// made an adjustment here to consider !bid69 (no spaces)
 					bidamount = msg.replace('!biddup','').replace('!bid','').replace('!bit','').replace(/\s/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');;
 					
@@ -1022,9 +1028,9 @@ if(msg == '!help'){
 							isOverride = true;
 							var override = msg.slice(10);
 							override = override.replace(/\s/g, '');
-							currbid = 0;
+							highbid = 0;
 							bidamount = override.split(',')[0];
-							bidder = override.split(',')[1];
+							highbidder = override.split(',')[1];
 						} else{
 							 message.react('❌');
 							 message.reply('u iz need an adult for dat.');					
@@ -1038,30 +1044,42 @@ if(msg == '!help'){
 					if(+bidamount > bid || +bidamount < 1374513896){
 						var decimalbid = true; 
 					}
-					//let isnum = /^\d+$/.test(bid);
-					
-					//message.reply("new bid: " + bid + " vs high bid: " + currbid);
-				if(+bid > +currbid && +bid < 1374513896 && !(hasLetter)){
+
+				if(+bid > +highbid && +bid < 1374513896 && !(hasLetter)){
 
 					let chan = await client.channels.cache.get(auctionchannel); 
 					let msgembed = await chan.messages.fetch(startmsg);
 					let updateEmbed = await msgembed.embeds[0];			
 					if(bid > 0){
-						authormsg = '>>>HIGH BID = ' + bid + ' LRC';
+
+						highbid = bid
+
+						authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
 						authormsg = authormsg.split('').join(' ');
 						updateEmbed.setAuthor({name: authormsg})
-						updateEmbed.fields[1] ={ name: 'HIGH BIDDER', value: bidder, inline: true }
+						updateEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true }
 						msgembed.edit(new MessageEmbed(updateEmbed));
 						msgembed.edit({embeds: [updateEmbed]});
 						
+
+						if(!(updatemsg == 'N/A')){
+							let secondMessage = await chan.messages.fetch(updatemsg);															
+							let secondEmbed = await secondMessage.embeds[0];
+							authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
+							authormsg = authormsg.split('').join(' ');
+							secondEmbed.setAuthor({name: authormsg})
+							secondEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true}
+							secondMessage.edit(new MessageEmbed(secondEmbed));
+							secondMessage.edit({embeds: [secondEmbed]});
+						}
 						
 						var bidmsg;
 						
 						//override currently waits for update to refresh message... check if we can update sooner.
 						
 						if(msg.includes('!override')){
-							bidmsg = 'Yo, check it... I set dat bid at ' + bid + ' for my man ' + bidder + '. Now youze keep droppin dem bits!'
-							dbSet(undefined, bid, bidder); //, undefined, undefined ,undefined);
+							bidmsg = 'Yo, check it... I set dat bid at ' + bid + ' for my man ' + highbidder + '. Now youze keep droppin dem bits!'
+							dbSet(undefined, bid, highbidder); //, undefined, undefined ,undefined);
 						}else{
 							bidmsg = '[NEW HIGH BID] ' + bid +' LRC by <@' + message.author + '>';
 							dbSet(undefined, bid, message.author); //, undefined, undefined ,undefined);
@@ -1121,14 +1139,14 @@ if(msg == '!help'){
 					
 					}else{
 						if(decimalbid){
-							message.reply('Wuts diz shiz? Check it yo, biddup in ho numberz. High bit iz ' + currbid);
+							message.reply('Wuts diz shiz? Check it yo, biddup in ho numberz. High bit iz ' + highbid);
 						}else if(!(isnum)){
-							message.reply('Gif me da money in strayt numberz... no oter fancy karacktrz. Biddup yo self! High bid iz ' + currbid + ' LRC.' );
+							message.reply('Gif me da money in strayt numberz... no oter fancy karacktrz. Biddup yo self! High bid iz ' + highbid + ' LRC.' );
 						} else if(+bid > 1374513896){
 							message.reply('Yo, Ow u haf mor El RCs dan dat max supply???' );	
 						}
 						else{
-							message.reply('Me Julie says ' + bid + ' iz lower than ' + currbid + ' LRC. Get high...er!' );
+							message.reply('Me Julie says ' + bid + ' iz lower than ' + highbid + ' LRC. Get high...er!' );
 						}
 					}
 				} else{
