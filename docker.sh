@@ -3,6 +3,21 @@
 name="0xalig"
 auth="$PWD/auth.json"
 
+usage() {
+    echo "Usage: $0 [command]"
+    echo
+    echo "  commands:"
+    echo "    start     | Run the bot normally"
+    echo "    build     | Build new code"
+    echo "    logs      | View logs of a running bot"
+    echo "    restart   | Rstart the bot"
+    echo "    stop      | Stop the bot"
+    echo "    kill      | Kill and remove the bot container"
+    echo "    local     | Run the container locally in a temporary state"
+    echo "    status    | Get status of container from Docker"
+    echo "    update    | Update code, rebuild, and restart the bot"
+}
+
 run() {
     case $1 in
         temp) opt="-it --rm";;
@@ -26,5 +41,6 @@ case $1 in
         docker rm $name >/dev/null
         run
     ;;
-    *) run;;
+    start) run;;
+    *) usage;;
 esac
