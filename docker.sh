@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-name="0xcarl"
+name="0xalig"
 auth="$PWD/auth.json"
 
 case $1 in
@@ -9,5 +9,12 @@ case $1 in
     restart) docker restart $name;;
     down) docker stop $name >/dev/null && docker rm $name >/dev/null;;
     local) docker run -it --rm --name $name -v $auth:/usr/src/app/auth.json $name;;
+    update)
+        git pull &&
+        docker build -t $name . &&
+        docker stop $name >/dev/null &&
+        docker rm $name >/dev/null &&
+        docker run -it --rm --name $name -v $auth:/usr/src/app/auth.json $name
+    ;;
     *) docker run -d --name $name -v $auth:/usr/src/app/auth.json $name;;
 esac
