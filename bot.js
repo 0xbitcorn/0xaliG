@@ -779,13 +779,10 @@ if(msg == '!help'){
 								let msgembed = await chan.messages.fetch(startmsg);
 								let updateEmbed = await msgembed.embeds[0];
 								
-								duration = duration - nextupdate;
-																
+								duration = duration - nextupdate;		
 								if(duration >= 3*60000){ //more than 2 minutes
 									nextupdate = duration % 60000 + 60000;
-								} if(duration >= 2*60000){ //more than 2 minutes
-									nextupdate = duration % 60000 + 69000;
-								} else if(duration >= 69000 && duration < 2*60000){ //between 1 and 2 minutes
+								} else if(duration > 69000 && duration < 2*60000){ //between 1 and 2 minutes
 									nextupdate = duration % 69000;
 								} else if(duration == 69000){
 									message.channel.send('69 SEX!!!');
@@ -899,7 +896,7 @@ if(msg == '!help'){
 
 					
 									
-					if(duration/1000 > 59){
+					if(duration/1000 > 60){
 							let dbchannel = await client.channels.cache.get(databasechannel);
 							let dbmsg = await dbchannel.messages.fetch(databasemsg);
 							let amsg = dbmsg.content;
