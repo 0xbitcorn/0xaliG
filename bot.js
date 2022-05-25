@@ -781,7 +781,7 @@ if(msg == '!help'){
 								
 								duration = duration - nextupdate;
 																
-								if(duration >= 2*60000){ //more than 2 minutes
+								if(duration > 2*60000){ //more than 2 minutes
 									nextupdate = duration % 60000 + 60000;
 								} else if(duration <= 2*60000 && duration >= 69000){ //between 2m and 69s
 									nextupdate = duration % 69000;
