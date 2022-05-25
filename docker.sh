@@ -3,6 +3,10 @@
 name="0xalig"
 auth="$PWD/auth.json"
 
+run() {
+    docker run -d --init --cap-add=SYS_ADMIN --name $name -v $auth:/usr/src/app/auth.json $name node -e "`cat bot.js`"
+}
+
 case $1 in
     build) docker build -t $name .;;
     logs) docker logs -tf $name;;
@@ -15,7 +19,7 @@ case $1 in
         docker build -t $name . &&
         docker stop $name >/dev/null
         docker rm $name >/dev/null
-        docker run -d --name $name -v $auth:/usr/src/app/auth.json $name
+        run
     ;;
-    *) docker run -d --name $name -v $auth:/usr/src/app/auth.json $name;;
+    *) run;;
 esac
