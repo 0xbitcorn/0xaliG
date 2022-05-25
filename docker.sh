@@ -9,6 +9,7 @@ case $1 in
     restart) docker restart $name;;
     down) docker stop $name >/dev/null && docker rm $name >/dev/null;;
     local) docker run -it --rm --name $name -v $auth:/usr/src/app/auth.json $name;;
+    status) docker ps -a | grep $name;;
     update)
         git pull &&
         docker build -t $name . &&
