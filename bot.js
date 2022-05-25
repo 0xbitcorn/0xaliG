@@ -517,9 +517,9 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 					{ name: 'DURATION', value: qduration, inline: true},
 					{ name: 'RESERVE', value: qreserve, inline: true}
 				)
-				.setFooter({text: 'BUYERS: Click the ✅ emoji for an alert when time is near \n SELLER|ADMIN: Click the ❌ emoji to remove this listing from the queue'})
+				.setFooter({text: 'BUYERS: Click the ✅ emoji for an alert when time is near \nSELLER|ADMIN: Click the ❌ emoji to remove this listing from the queue'})
 			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
-			queue.Embed.react('✅').then(
+			queueEmbed.react('✅').then(
 				queueEmbed.react('❌'));			
 
 			if(qmsg == 'NO QUEUE'){
