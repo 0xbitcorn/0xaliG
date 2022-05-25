@@ -781,10 +781,10 @@ if(msg == '!help'){
 								
 								duration = duration - nextupdate;
 																
-								if(duration > 2*60000){ //more than 2 minutes
+								if(duration >= 2*60001){ //more than 2 minutes
 									nextupdate = duration % 60000 + 60000;
-								} else if(duration <= 2*60000 && duration >= 69000){ //between 2m and 69s
-									nextupdate = duration % 69000;
+								} else if(duration >= 69000 && duration <= 2*60000){ //between 1 and 2 minutes
+									nextupdate = duration % 60000 + 69000;
 								} else if(duration == 69000){
 									message.channel.send('69 SEX!!!');
 									nextupdate = 9000;
