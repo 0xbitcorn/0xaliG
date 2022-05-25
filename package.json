@@ -6,7 +6,6 @@
   "author": "@BTCornBLAIQchnz",
   "dependencies": {
     "discord.js": "^13.6.0",
-    "puppeteer": "^14.1.1",
-    "quick.db": "^7.1.3"
+    "puppeteer": "^14.1.1"
   }
 }
