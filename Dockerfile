@@ -7,7 +7,7 @@ RUN apt-get -y update; \
 #RUN apt-get -y install python3
 # Install modules
 ADD package*.json ./
-RUN npm install --no-dev
+RUN npm install
 # Install app files
 ADD *.js ./
 
