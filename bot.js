@@ -4,7 +4,7 @@
 
 const {Client, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
 const puppeteer = require('puppeteer');
-const moment = require('moment');
+//const moment = require('moment');
 
 const client = new Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.GUILD_PRESENCES],
