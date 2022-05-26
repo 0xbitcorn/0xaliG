@@ -822,7 +822,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 			var date = new Date();
 			//console.log('initial date: ' + date);
 			date = date.getTime() + (qdelay*60*60*1000);
-			qdelay = dateFormat(date, "UTC:h:MM TT Z"); 
+			qdelay = dateFormat(date, "UTC:mmmm d h:MM TT Z"); 
 			//console.log('initial delay: ' + qdelay);
 		}
 
