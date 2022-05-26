@@ -1196,10 +1196,11 @@ client.on('messageReactionAdd', async (reaction, user) => {
 						}
 					}
 					dbmsg.edit(qmsg);
-					reaction.message.delete();
+					
+					//reaction.message.delete();
 				} else{
 					console.log('Queue message was not in database');
-					reaction.message.delete();
+					//reaction.message.delete();
 				}
 				
 				//console.log(removemsgid + '');
