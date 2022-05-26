@@ -1175,7 +1175,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 			//console.log(reaction.message.guild.member(user).roles.cache.has(puzzlegang));
 			var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
 			
-			console.log(hasRole);
 			if(qUser.includes(user.id) || hasRole){
 				var removemsgid = reaction.message.id;
 				var dbchannel = await client.channels.cache.get(databasechannel);
@@ -1197,15 +1196,15 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					}
 					dbmsg.edit(qmsg);
 					
-					//reaction.message.delete();
+					reaction.message.delete();
 				} else{
 					console.log('Queue message was not in database');
-					//reaction.message.delete();
+					reaction.message.delete();
 				}
 				
 				//console.log(removemsgid + '');
 			}else{
-				reaction.remove();
+				reaction.users.remove(user);
 			}
 		}
 	}else{
