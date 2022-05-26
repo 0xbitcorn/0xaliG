@@ -1172,7 +1172,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(reaction.message.channel.id == queuechannel){
 		if(reaction.emoji.name === '❌'){
 			let qUser = reaction.message.embeds[0].fields[0].value;
-			if(qUser.includes(user.id) || reaction.message.member.roles.cache.has(puzzlegang)){
+			if(qUser.includes(user.id) || user.roles.cache.has(puzzlegang)){
 				var removemsgid = reaction.message.id;
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(queuemsg);
