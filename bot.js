@@ -4,6 +4,7 @@
 
 const {Client, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
 const puppeteer = require('puppeteer');
+const moment = require('moment');
 
 const client = new Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.GUILD_PRESENCES],
@@ -57,6 +58,7 @@ const isLive = false;							// true = live; false = maintenance
 
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
+
 
 // bot avatar
 const botimg = 'https://cdn.discordapp.com/attachments/962059766937567254/974343468350603274/aliG_1.png';
@@ -148,6 +150,271 @@ global.priorbid = '0';				// PREVIOUS HIGH BID
 global.priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
 
 global.killauction = false;			// KILL AUCTION TRIGGER
+
+/////////////////
+// DATE FORMAT //
+/////////////////
+
+var token = /d{1,4}|D{3,4}|m{1,4}|yy(?:yy)?|([HhMsTt])\1?|W{1,2}|[LlopSZN]|"[^"]*"|'[^']*'/g;
+var timezone = /\b(?:[A-Z]{1,3}[A-Z][TC])(?:[-+]\d{4})?|((?:Australian )?(?:Pacific|Mountain|Central|Eastern|Atlantic) (?:Standard|Daylight|Prevailing) Time)\b/g;
+var timezoneClip = /[^-+\dA-Z]/g;
+function dateFormat(date, mask, utc, gmt) {
+    if (arguments.length === 1 && typeof date === "string" && !/\d/.test(date)) {
+        mask = date;
+        date = undefined
+    }
+    date = date || date === 0 ? date : new Date;
+    if (!(date instanceof Date)) {
+        date = new Date(date)
+    }
+    if (isNaN(date)) {
+        throw TypeError("Invalid date")
+    }
+    mask = String(masks[mask] || mask || masks["default"]);
+    var maskSlice = mask.slice(0, 4);
+    if (maskSlice === "UTC:" || maskSlice === "GMT:") {
+        mask = mask.slice(4);
+        utc = true;
+        if (maskSlice === "GMT:") {
+            gmt = true
+        }
+    }
+    var _ = function _() {
+        return utc ? "getUTC" : "get"
+    };
+    var _d = function d() {
+        return date[_() + "Date"]()
+    };
+    var D = function D() {
+        return date[_() + "Day"]()
+    };
+    var _m = function m() {
+        return date[_() + "Month"]()
+    };
+    var y = function y() {
+        return date[_() + "FullYear"]()
+    };
+    var _H = function H() {
+        return date[_() + "Hours"]()
+    };
+    var _M = function M() {
+        return date[_() + "Minutes"]()
+    };
+    var _s = function s() {
+        return date[_() + "Seconds"]()
+    };
+    var _L = function L() {
+        return date[_() + "Milliseconds"]()
+    };
+    var _o = function o() {
+        return utc ? 0 : date.getTimezoneOffset()
+    };
+    var _W = function W() {
+        return getWeek(date)
+    };
+    var _N = function N() {
+        return getDayOfWeek(date)
+    };
+    var flags = {
+        d: function d() {
+            return _d()
+        },
+        dd: function dd() {
+            return pad(_d())
+        },
+        ddd: function ddd() {
+            return i18n.dayNames[D()]
+        },
+        DDD: function DDD() {
+            return getDayName({
+                y: y(),
+                m: _m(),
+                d: _d(),
+                _: _(),
+                dayName: i18n.dayNames[D()],
+                short: true
+            })
+        },
+        dddd: function dddd() {
+            return i18n.dayNames[D() + 7]
+        },
+        DDDD: function DDDD() {
+            return getDayName({
+                y: y(),
+                m: _m(),
+                d: _d(),
+                _: _(),
+                dayName: i18n.dayNames[D() + 7]
+            })
+        },
+        m: function m() {
+            return _m() + 1
+        },
+        mm: function mm() {
+            return pad(_m() + 1)
+        },
+        mmm: function mmm() {
+            return i18n.monthNames[_m()]
+        },
+        mmmm: function mmmm() {
+            return i18n.monthNames[_m() + 12]
+        },
+        yy: function yy() {
+            return String(y()).slice(2)
+        },
+        yyyy: function yyyy() {
+            return pad(y(), 4)
+        },
+        h: function h() {
+            return _H() % 12 || 12
+        },
+        hh: function hh() {
+            return pad(_H() % 12 || 12)
+        },
+        H: function H() {
+            return _H()
+        },
+        HH: function HH() {
+            return pad(_H())
+        },
+        M: function M() {
+            return _M()
+        },
+        MM: function MM() {
+            return pad(_M())
+        },
+        s: function s() {
+            return _s()
+        },
+        ss: function ss() {
+            return pad(_s())
+        },
+        l: function l() {
+            return pad(_L(), 3)
+        },
+        L: function L() {
+            return pad(Math.floor(_L() / 10))
+        },
+        t: function t() {
+            return _H() < 12 ? i18n.timeNames[0] : i18n.timeNames[1]
+        },
+        tt: function tt() {
+            return _H() < 12 ? i18n.timeNames[2] : i18n.timeNames[3]
+        },
+        T: function T() {
+            return _H() < 12 ? i18n.timeNames[4] : i18n.timeNames[5]
+        },
+        TT: function TT() {
+            return _H() < 12 ? i18n.timeNames[6] : i18n.timeNames[7]
+        },
+        Z: function Z() {
+            return gmt ? "GMT" : utc ? "UTC" : formatTimezone(date)
+        },
+        o: function o() {
+            return (_o() > 0 ? "-" : "+") + pad(Math.floor(Math.abs(_o()) / 60) * 100 + Math.abs(_o()) % 60, 4)
+        },
+        p: function p() {
+            return (_o() > 0 ? "-" : "+") + pad(Math.floor(Math.abs(_o()) / 60), 2) + ":" + pad(Math.floor(Math.abs(_o()) % 60), 2)
+        },
+        S: function S() {
+            return ["th", "st", "nd", "rd"][_d() % 10 > 3 ? 0 : (_d() % 100 - _d() % 10 != 10) * _d() % 10]
+        },
+        W: function W() {
+            return _W()
+        },
+        WW: function WW() {
+            return pad(_W())
+        },
+        N: function N() {
+            return _N()
+        }
+    };
+    return mask.replace(token, function(match) {
+        if (match in flags) {
+            return flags[match]()
+        }
+        return match.slice(1, match.length - 1)
+    })
+}
+var masks = {
+    default: "ddd mmm dd yyyy HH:MM:ss",
+    shortDate: "m/d/yy",
+    paddedShortDate: "mm/dd/yyyy",
+    mediumDate: "mmm d, yyyy",
+    longDate: "mmmm d, yyyy",
+    fullDate: "dddd, mmmm d, yyyy",
+    shortTime: "h:MM TT",
+    mediumTime: "h:MM:ss TT",
+    longTime: "h:MM:ss TT Z",
+    isoDate: "yyyy-mm-dd",
+    isoTime: "HH:MM:ss",
+    isoDateTime: "yyyy-mm-dd'T'HH:MM:sso",
+    isoUtcDateTime: "UTC:yyyy-mm-dd'T'HH:MM:ss'Z'",
+    expiresHeaderFormat: "ddd, dd mmm yyyy HH:MM:ss Z"
+};
+var i18n = {
+    dayNames: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    monthNames: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    timeNames: ["a", "p", "am", "pm", "A", "P", "AM", "PM"]
+};
+var pad = function pad(val) {
+    var len = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
+    return String(val).padStart(len, "0")
+};
+var getDayName = function getDayName(_ref) {
+    var y = _ref.y,
+        m = _ref.m,
+        d = _ref.d,
+        _ = _ref._,
+        dayName = _ref.dayName,
+        _ref$short = _ref["short"],
+        _short = _ref$short === void 0 ? false : _ref$short;
+    var today = new Date;
+    var yesterday = new Date;
+    yesterday.setDate(yesterday[_ + "Date"]() - 1);
+    var tomorrow = new Date;
+    tomorrow.setDate(tomorrow[_ + "Date"]() + 1);
+    var today_d = function today_d() {
+        return today[_ + "Date"]()
+    };
+    var today_m = function today_m() {
+        return today[_ + "Month"]()
+    };
+    var today_y = function today_y() {
+        return today[_ + "FullYear"]()
+    };
+    var yesterday_d = function yesterday_d() {
+        return yesterday[_ + "Date"]()
+    };
+    var yesterday_m = function yesterday_m() {
+        return yesterday[_ + "Month"]()
+    };
+    var yesterday_y = function yesterday_y() {
+        return yesterday[_ + "FullYear"]()
+    };
+    var tomorrow_d = function tomorrow_d() {
+        return tomorrow[_ + "Date"]()
+    };
+    var tomorrow_m = function tomorrow_m() {
+        return tomorrow[_ + "Month"]()
+    };
+    var tomorrow_y = function tomorrow_y() {
+        return tomorrow[_ + "FullYear"]()
+    };
+    if (today_y() === y && today_m() === m && today_d() === d) {
+        return _short ? "Tdy" : "Today"
+    } else if (yesterday_y() === y && yesterday_m() === m && yesterday_d() === d) {
+        return _short ? "Ysd" : "Yesterday"
+    } else if (tomorrow_y() === y && tomorrow_m() === m && tomorrow_d() === d) {
+        return _short ? "Tmw" : "Tomorrow"
+    }
+    return dayName
+};
+var formatTimezone = function formatTimezone(date) {
+    return (String(date).match(timezone) || [""]).pop().replace(timezoneClip, "").replace(/GMT\+0000/g, "UTC")
+};
+
+
 
 /////////////////
 //  FUNCTIONS  //
@@ -275,20 +542,57 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	
 	return dbmsg.edit(dbstr);
 }
+// asyncSome function for processing arrays with async
+const asyncSome = async (arr, predicate) => {
+	for (let e of arr) {
+		if (await predicate(e)) return true;
+	}
+	return false;
+};
 
+const res = 
 // grab details for next auction
 async function getNextAuction() {
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	var dbmsg = await dbchannel.messages.fetch(queuemsg);
 	var qmsg = dbmsg.content;
-	if(qmsg.includes(',')){
-		qmsg = qmsg.split(',')[0];
-	}
-	console.log('qmsg: ' +qmsg);
+	var qentries = new Array();
 	
-	var chan = await client.channels.cache.get(queuechannel);
-	var queueitem = await chan.messages.fetch(qmsg);
-	let qembed = await queueitem.embeds[0];
+	var chan = await client.channels.cache.get(queuechannel);	
+	
+	if(qmsg.includes(',')){
+		qentries = inputs.split(',');
+	}else{
+		qentries[0] = qmsg;
+	}
+
+	await asyncSome(qentries, async (i) => {
+		var queueitem = await chan.messages.fetch(element);
+		let qembed = await queueitem.embeds[0];
+		let qnotbefore = qembed.fields[3].value;
+		let now = new Date();
+		if(qnotbefore == 'N/A'){return true;}
+		if(moment(now).isSameOrAfter(qnotbefore)){
+			console.log(qnotbefore + " is same or after " + now);
+			return true;
+		}; 
+	});
+
+	console.log(qembed.title);
+
+/* 	qentries.some(function(element, index){
+		var queueitem = await chan.messages.fetch(element);
+		let qembed = await queueitem.embeds[0];
+		let qnotbefore = qembed.fields[3].value;
+		let now = new Date();
+		if(qnotbefore == 'N/A'){return true;}
+		if(moment(now).isSameOrAfter(qnotbefore)){
+			console.log(qnotbefore + " is same or after " + now);
+			return true;
+		}; 
+	}); */
+
+	console.log('qmsg: ' +qmsg);
 	
 	let qseller = await qembed.fields[0].value;
 	let qduration = await qembed.fields[1].value;
@@ -507,6 +811,21 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 		var qduration = setLength(arr[1]);
 		var qreserve = '0';
 		if (!(typeof arr[2] === 'undefined')){qreserve = arr[2];}
+		var qdelay = 'N/A';
+		if (!(typeof arr[3] === 'undefined')){qdelay = arr[3];}
+		if(!(qdelay == 'N/A')){
+
+			if(qdelay > 48){
+				message.reply('Yo, check it! me set dat delay to 48 hrs. Dat be me current max delay.');
+				qdelay = 48;
+			}
+			var date = new Date();
+			//console.log('initial date: ' + date);
+			date = date.getTime() + (qdelay*60*60*1000);
+			qdelay = dateFormat(date, "UTC:h:MM TT Z"); 
+			//console.log('initial delay: ' + qdelay);
+		}
+
 			let qEmbed = new MessageEmbed()
 				.setColor(testcolor)
 				.setTitle(qTitle)
@@ -515,9 +834,10 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 				.addFields(
 					{ name: 'SELLER', value: '<@'+message.author+'>'},
 					{ name: 'DURATION', value: qduration, inline: true},
-					{ name: 'RESERVE', value: qreserve, inline: true}
+					{ name: 'RESERVE', value: qreserve, inline: true},
+					{ name: 'NOT BEFORE', value: qdelay, inline: true}
 				)
-				.setFooter({text: 'BUYERS: Click the ✅ emoji for an alert when time is near \nSELLER|ADMIN: Click the ❌ emoji to remove this listing from the queue'})
+				.setFooter({text: 'Use ✅ to subscribe to an alert  \nUse ❌ to remove from the queue (SELLER/ADMIN)'})
 			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
 			queueEmbed.react('✅').then(
 				queueEmbed.react('❌'));			
