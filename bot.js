@@ -567,24 +567,25 @@ async function getNextAuction() {
 	//need to do a check to see if an auction has started since this getNextAuction cycle was started.
 	//if so... abort process.
 	var dbchannel = await client.channels.cache.get(databasechannel);
-	var dbmsg = await dbchannel.messages.fetch(queuemsg);
-	var qmsg = dbmsg.content;
-	var qentries = new Array();
-	
-	if(qmsg == 'NO QUEUE'){return qmsg;}
-	qmsg = qmsg.replace(/\s/g, '');
-
-	if(qmsg.includes(',')){
-
-		qentries = qmsg.split(',');
-	}else{
-		qentries[0] = qmsg;
-	}
-	var qembed;
-	var itemselected = 'N/A';
-	var queueitem;
 
 	do{
+		var dbmsg = await dbchannel.messages.fetch(queuemsg);
+		var qmsg = dbmsg.content;
+		var qentries = new Array();
+		
+		if(qmsg == 'NO QUEUE'){return qmsg;}
+		qmsg = qmsg.replace(/\s/g, '');
+
+		if(qmsg.includes(',')){
+
+			qentries = qmsg.split(',');
+		}else{
+			qentries[0] = qmsg;
+		}
+		var qembed;
+		var itemselected = 'N/A';
+		var queueitem;
+
 		await asyncSome(qentries, async (i) => {
 			var qchannel = await client.channels.cache.get(queuechannel);
 			try{
@@ -1576,6 +1577,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(queuemsg);
 				let qmsg = dbmsg.content;
+				console.log(removemsgid + ' ' + qmsg);
 				if(qmsg.includes(removemsgid)){
 					if(qmsg == removemsgid){
 						qmsg = 'NO QUEUE';
@@ -1586,8 +1588,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 							qmsg=qmsg.slice(2);
 						}
 						
-						if(qmsg.charAt(qmsg.length - 2) ==','){
-							qmsg=qmsg.slice(0, qmsg.length - 2);
+						if(qmsg.charAt(qmsg.length - 1) ==','){
+							qmsg=qmsg.slice(0, -2);
+						}
+
+						if(qmsg.charAt(qmsg.length) == ','){
+							qmsg=qmsg.slice(0, -1);
 						}
 					}
 					dbmsg.edit(qmsg);
