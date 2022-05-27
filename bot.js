@@ -881,7 +881,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 					{ name: 'RESERVE', value: qreserve, inline: true},
 					{ name: 'NOT BEFORE', value: qdelay, inline: true}
 				)
-				.setFooter({text: 'Use ✅ to subscribe to an alert  \nUse ❌ to remove from the queue (SELLER/ADMIN)'})
+				.setFooter({text: '✅ = subscribe to an alert  \n❌ = remove from the queue (SELLER/ADMIN)'})
 			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
 			queueEmbed.react('✅').then(
 				queueEmbed.react('❌'));			
