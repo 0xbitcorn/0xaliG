@@ -541,10 +541,10 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	return dbmsg.edit(dbstr);
 }
 function processDateFormat(str){
-	let monthlookup = str.split(' ')[0].replace(/\s/g, '');
+	let monthlookup = str.split(' ')[0].replace(/\s+/g, '');
 	let month = monthAbbrev[monthlookup] ? monthAbbrev[monthlookup] : monthlookup;
 	month = month -1; //adjustment for moment.js
-	let day = str.split(' ')[1].replace(/\s/g, '');
+	let day = str.split(' ')[1].replace(/\s+/g, '');
 	let time = str.split(' ')[2];
 	let hours = parseInt(time.split(':')[0]);
 	if(str.split(' ')[3].includes('PM')){ hours = hours + 12;}
@@ -574,7 +574,7 @@ async function getNextAuction() {
 		var qentries = new Array();
 		
 		if(qmsg == 'NO QUEUE'){return qmsg;}
-		qmsg = qmsg.replace(/\s/g, '');
+		qmsg = qmsg.replace(/\s+/g, '');
 
 		if(qmsg.includes(',')){
 
@@ -612,15 +612,21 @@ async function getNextAuction() {
 				}catch{
 					console.log('removing item: ' + i);
 					console.log('qmsg: ' + qmsg)
+					qmsg = qmsg.replace(/\s+/g, '');
+
 					if(qmsg == i){
 						qmsg = 'NO QUEUE';
 						dbmsg.edit(qmsg);
 					}else{
-						qmsg = qmsg.replace(i,'').replace(',,',',');
+						qmsg = qmsg.replace(i,'').replace(',,',',').replace(', ','');
 						if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
+						if(qmsg.charAt(qmsg.length) == ' '){
+							qmsg = qmsg.slice(0,-1);
+						}
 						if(qmsg.charAt(qmsg.length) == ','){
 							qmsg = qmsg.slice(0,-1);
 						}
+						dbmsg.edit(qmsg);
 					}
 				}				
 			}
@@ -809,7 +815,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 			var dbchannel = await client.channels.cache.get(databasechannel);
 			var dbmsg = await dbchannel.messages.fetch(prizemsg);
 			let userTodm = msg.split(' ')[1];
-			userTodm = userTodm.replace(/\s/g, '').replace('<@', '').replace('>','');
+			userTodm = userTodm.replace(/\s+/g, '').replace('<@', '').replace('>','');
 
 			const user = await client.users.fetch(userTodm).catch(() => null);
 			
@@ -827,7 +833,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 			let pmsg = dbmsg.content;
 
 			let userToRemove = '\n' + msg.split(' ')[1];
-			userToRemove = userToRemove.replace(/\s/g, '');
+			userToRemove = userToRemove.replace(/\s+/g, '');
 			if(pmsg.includes(userToRemove)){
 				pmsg = pmsg.replace(userToRemove,'');
 				pmsg = pmsg.replace('\n',', ');
@@ -841,7 +847,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 		var dbchannel = await client.channels.cache.get(databasechannel);
 		var dbmsg = await dbchannel.messages.fetch(queuemsg);
 		let qmsg = dbmsg.content;
-		let inputs = msg.replace('!queue','').replace(/\s/g,'');
+		let inputs = msg.replace('!queue','').replace(/\s+/g,'');
 		let arr = new Array();
 		arr = inputs.split(',');
 		
@@ -889,7 +895,8 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 			if(qmsg == 'NO QUEUE'){
 				qmsg = queueEmbed.id;
 			}else{
-				qmsg = qmsg + ', ' + queueEmbed.id;
+				qmsg = qmsg + ',' + queueEmbed.id;
+				qmsg = qmsg.replace(',,',',').replace(/\s+/g,'');
 			}
 
 			dbmsg.edit(qmsg);
@@ -928,7 +935,7 @@ if(msg == '!help'){
 
 
 	if (msg.includes('!auction')) {
-		msg = msg.slice(8).replace(/\s/g,'');
+		msg = msg.slice(8).replace(/\s+/g,'');
 
 	// limit these functions to approved auction roles				
 	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){
@@ -1042,10 +1049,10 @@ if(msg == '!help'){
 								duration = '5 min';
 							} else{
 								duration = msg.split(",")[1];
-								duration = duration.replace(/\s/g, '');
+								duration = duration.replace(/\s+/g, '');
 								duration = setLength(duration);
 		
-								processtime = duration.replace(/\s/g, '');
+								processtime = duration.replace(/\s+/g, '');
 								if(processtime.includes('d')){
 									days = parseInt(processtime.split('d')[0]);
 									processtime = processtime.split('d')[1];
@@ -1066,7 +1073,7 @@ if(msg == '!help'){
 									reserve = '0';
 								} else{
 									reserve = msg.split(",")[2];
-									reserve = reserve.replace(/\s/g, '');
+									reserve = reserve.replace(/\s+/g, '');
 								}
 								seller = message.author.username;
 								sellerid = message.author;
@@ -1256,7 +1263,7 @@ if(msg == '!help'){
 											.setFooter({text: 'Report any issues/suggestions via DM to @BTCornBLAIQchnz'})
 										let endEmbed = await achan.send({ embeds: [eEmbed] });
 										
-										achan.send({files: [endimage]});
+										let endImg = await achan.send({files: [endimage]});
 									
 									dbmsg.edit('NO CURRENT AUCTION');
 									client.user.setStatus('online');
@@ -1417,14 +1424,14 @@ if(msg == '!help'){
 					var updatemsg = amsg.split(',')[4];
 					highbidder = message.author.username.split("#")[0];
 	// made an adjustment here to consider !bid69 (no spaces)
-					bidamount = msg.replace('!biddup','').replace('!bid','').replace('!bit','').replace(/\s/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');;
+					bidamount = msg.replace('!biddup','').replace('!bid','').replace('!bit','').replace(/\s+/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');;
 					
 					
 					if(msg.includes('!override')){
 						if(message.member.roles.cache.has(puzzlegang)){
 							isOverride = true;
 							var override = msg.slice(10);
-							override = override.replace(/\s/g, '');
+							override = override.replace(/\s+/g, '');
 							highbid = 0;
 							bidamount = override.split(',')[0];
 							highbidder = override.split(',')[1];
