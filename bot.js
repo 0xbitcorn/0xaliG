@@ -4,7 +4,7 @@
 
 const {Client, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
 const puppeteer = require('puppeteer');
-//const moment = require('moment');
+const moment = require('moment');
 
 const client = new Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.GUILD_PRESENCES],
@@ -66,7 +66,7 @@ const botimg = 'https://cdn.discordapp.com/attachments/962059766937567254/974343
 // bot start messages
 const auction_start=[
 "BooyaKORNsha, check it! Wheeze be bittin on dis fine azz BLT. Itz prolly got sum mayo up in dat lettuce an doncha fagetta bout dat wicked bakon! Lez see sum !bits boys and misses!",
-"Check dis out... Me Julie say we takin bits on this dope azz shit. Can ya belief dat?!? I tell er to HODL cuz iz straight fire. Y'all best lay some !bits reel quick befor I snap dis up! Respek!",
+"Check dis out... Me Julie say we takin bits on this dope azz shit. Can ya belief dat?!? It iz straight fire. Y'all best lay some !bits reel quick befor I snap dis up! Respek!",
 "Yo, check it. Ders dis lil known techmology call MFtees... Now, u prolly nevr erd dis, but my main man, Carlos, tell me these ain't some bullshit t-shirt atcha local kmart. Deez be dope azz digiTees like dat one below. Now, lay it on me hot like sauss and !biddup yo self",
 "Ahhhight... A proposition for ya. Dis wicked image below, be on this bran new thing call innernet. Zeros, ones, and shit all up in a LOOPRING... prolly one of dem space planets where lil blue speedy feets live. 'YO, SONIK! BRING ME DAT IMAGE!' wif dem dope azz sneakers he all... ZOOM... dere befor u know it.",
 "I am not Ali A, not Ali B, Ali C, Ali D, Ali E, Ali F... but... Å╙ï-G! Respek! Now, lez get to dis awkshun! Ow many of dem spanish El RCs u got? show me dat !bid",
@@ -107,6 +107,8 @@ const image_end=[
 'https://c.tenor.com/O5gfTOAfzsQAAAAC/laugh.gif' //repeated on purpose
 
 ]
+
+const monthAbbrev = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
 
 // random selector
 const randommsg = (str) => {
@@ -414,8 +416,6 @@ var formatTimezone = function formatTimezone(date) {
     return (String(date).match(timezone) || [""]).pop().replace(timezoneClip, "").replace(/GMT\+0000/g, "UTC")
 };
 
-
-
 /////////////////
 //  FUNCTIONS  //
 /////////////////
@@ -459,8 +459,6 @@ async function scrape(nfturl){
 		}
 	}
 	browser.close();
-	//console.log(imageTitle + ' scraped');
-	//console.log(imageHref + ' scraped');
 	return imageTitle + ',' + imageHref;
 }
 
@@ -542,6 +540,18 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	
 	return dbmsg.edit(dbstr);
 }
+function processDateFormat(str){
+	let monthlookup = str.split(' ')[0].replace(/\s/g, '');
+	let month = monthAbbrev[monthlookup] ? monthAbbrev[monthlookup] : monthlookup;
+	let day = str.split(' ')[1].replace(/\s/g, '');
+	let time = str.split(' ')[2];
+	if(str.split(' ')[3].includes('PM')){ hours = hours + 12;}
+	let hours = time.split(':')[0];
+	let minutes = time.split(':')[1];
+	return month + ',' + day + ',' + hours + ',' + minutes;
+}
+
+
 // asyncSome function for processing arrays with async
 const asyncSome = async (arr, predicate) => {
 	for (let e of arr) {
@@ -550,7 +560,6 @@ const asyncSome = async (arr, predicate) => {
 	return false;
 };
 
-const res = 
 // grab details for next auction
 async function getNextAuction() {
 	var dbchannel = await client.channels.cache.get(databasechannel);
@@ -558,41 +567,62 @@ async function getNextAuction() {
 	var qmsg = dbmsg.content;
 	var qentries = new Array();
 	
-	var chan = await client.channels.cache.get(queuechannel);	
-	
+	if(qmsg == 'NO QUEUE'){return qmsg;}
+	qmsg = qmsg.replace(/\s/g, '');
+
 	if(qmsg.includes(',')){
-		qentries = inputs.split(',');
+
+		qentries = qmsg.split(',');
 	}else{
 		qentries[0] = qmsg;
 	}
+	var qembed;
+	var itemselected;
+	var queueitem;
 
-	await asyncSome(qentries, async (i) => {
-		var queueitem = await chan.messages.fetch(element);
-		let qembed = await queueitem.embeds[0];
-		let qnotbefore = qembed.fields[3].value;
-		let now = new Date();
-		if(qnotbefore == 'N/A'){return true;}
-		if(moment(now).isSameOrAfter(qnotbefore)){
-			console.log(qnotbefore + " is same or after " + now);
-			return true;
-		}; 
-	});
+	//do{
+		await asyncSome(qentries, async (i) => {
+			var qchannel = await client.channels.cache.get(queuechannel);
+			try{
+				queueitem = await qchannel.messages.fetch(i+'');
+				qembed = await queueitem.embeds[0];
+				if(qembed.fields[3].value == 'N/A'){
+					itemselected = i;
+					return true;}
+				let dateArray = new Array();
+				dateArray = processDateFormat(qembed.fields[3].value).split(',');
+				let now = moment.utc();
+				let qnotbefore = moment.utc([now.year(),dateArray[0],dateArray[1],dateArray[2],dateArray[3]]);
+				if(now.isSameOrAfter(qnotbefore)){
+					itemselected = i;
+					return true;
+				}; 
+			}catch{
+				console.log('removing item: ' + i);
+				console.log('qmsg: ' + qmsg)
+				if(qmsg == i){
+					qmsg = 'NO QUEUE';
+					dbmsg.edit(qmsg);
+				}else{
+					qmsg = qmsg.replace(i,'').replace(',,',',');
+					if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
+					if(qmsg.charAt(qmsg.length) == ','){qmsg = qmsg.slice(0,qmsg.length - 1);}
+				}
+			}
+		});
+	//}while();
+if(qmsg = 'NO QUEUE'){ return qmsg;}
 
-	console.log(qembed.title);
+	if(qmsg == itemselected){
+		qmsg = 'NO QUEUE';
+	}{
+		qmsg = qmsg.replace(itemselected,'').replace(',,',',');
+		if(qmsg.charAt(0) == ','){
+			qmsg = qmsg.slice(1);
+		}
+	}
 
-/* 	qentries.some(function(element, index){
-		var queueitem = await chan.messages.fetch(element);
-		let qembed = await queueitem.embeds[0];
-		let qnotbefore = qembed.fields[3].value;
-		let now = new Date();
-		if(qnotbefore == 'N/A'){return true;}
-		if(moment(now).isSameOrAfter(qnotbefore)){
-			console.log(qnotbefore + " is same or after " + now);
-			return true;
-		}; 
-	}); */
-
-	console.log('qmsg: ' +qmsg);
+	
 	
 	let qseller = await qembed.fields[0].value;
 	let qduration = await qembed.fields[1].value;
@@ -601,12 +631,9 @@ async function getNextAuction() {
 	let qtitle = await qembed.title;
 	let qurl = await qembed.url;
 	
-	//console.log('seller: ' + qseller);
-	//console.log('duration: ' + qduration);
-	//console.log('reserve: ' + qreserve);
-	//console.log('image url: ' + qimage);
-	//console.log('title: ' + qtitle);
-	//console.log('title url: ' + qurl);
+	// add these when ready to go live //
+	dbmsg.edit(qmsg);
+	queueitem.delete();
 	
 	let auctiondetails = qseller + ', ' + qduration + ', ' + qreserve + ', ' + qimage + ', ' + qtitle + ', ' + qurl;
 	
@@ -761,12 +788,11 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 			var dbmsg = await dbchannel.messages.fetch(prizemsg);
 			let userTodm = msg.split(' ')[1];
 			userTodm = userTodm.replace(/\s/g, '').replace('<@', '').replace('>','');
-			//console.log(userTodm + '');
+
 			const user = await client.users.fetch(userTodm).catch(() => null);
 			
 			if (!user) return message.channel.send("User not found :(");
 			let dmcontent = "uh... hi";
-			//"Congrads! me Julie say i should let u know dat u wuz number 4/69, my man. U iz gonna getta BLT! DM BTCornBLAIQchnz with yo wallet address!";
 			await user.send(dmcontent).catch(() => {
 				message.channel.send("User has DMs closed or has no mutual servers with the bot:(");
 			});
@@ -779,9 +805,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 			let pmsg = dbmsg.content;
 
 			let userToRemove = '\n' + msg.split(' ')[1];
-			//console.log(userToRemove);
 			userToRemove = userToRemove.replace(/\s/g, '');
-			//console.log(userToRemove);
 			if(pmsg.includes(userToRemove)){
 				pmsg = pmsg.replace(userToRemove,'');
 				pmsg = pmsg.replace('\n',', ');
@@ -820,10 +844,8 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 				qdelay = 48;
 			}
 			var date = new Date();
-			//console.log('initial date: ' + date);
 			date = date.getTime() + (qdelay*60*60*1000);
-			qdelay = dateFormat(date, "UTC:mmmm d h:MM TT Z"); 
-			//console.log('initial delay: ' + qdelay);
+			qdelay = dateFormat(date, "UTC:mmm d h:MM TT Z"); 
 		}
 
 			let qEmbed = new MessageEmbed()
@@ -929,75 +951,99 @@ if(msg == '!help'){
 						message.react('❌');
 						message.reply('Yo, my main man... one awkshun at a time. Check bak latr!')}
 				} else{
-		(async() => {
-					nfturl = msg.split(",")[0];
+					var nextauction = 'NO QUEUE';	
+	(async() => {
+		do{		
+	
+					//need to figure out how to have a time based check... maybe combine !queue and !auction... then have it check if there's a delay or current auction going... 
+					//if either, set queue, if not, go live.
+
+					if(!(nextauction == 'NO QUEUE')){
+						console.log('next auction');
+						await sleep(15000);
+						let auctionDeets = new Array();
+						auctionDeets = nextauction.split(',');
+
+						seller = auctionDeets[0];		// NFT SELLER
+						duration = auctionDeets[1];		// AUCTION DURATION
+						reserve = auctionDeets[2];		// SELLER SET RESERVE
+						imgurl = auctionDeets[3];		// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
+						title = auctionDeets[4];		// NFT TITLE
+						nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
+
+						highbid = '0';					// CURRENT HIGH BID
+						highbidder = "N/A";				// CURRENT HIGH BIDDER
+
+						priorbid = '0';				// PREVIOUS HIGH BID
+						priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
+
+						killauction = false;			// KILL AUCTION TRIGGER
+					}else{
+						nfturl = msg.split(",")[0];
 					
-					if (!(isValidURL(nfturl))){
-						message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
-						throw 'Parameter is not a valid url!';
-					}
-						scrapetext = await scrape(nfturl);
-						title = scrapetext.split(',')[0];
-						
-						if(message.type === 'REPLY'){
-						await message.fetchReference().then(repliedTo =>{
-								if(repliedTo.attachments.size > 0){
-									imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
-								}else{
+						if (!(isValidURL(nfturl))){
+							message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
+							throw 'Parameter is not a valid url!';
+						}
+							scrapetext = await scrape(nfturl);
+							title = scrapetext.split(',')[0];
+							
+							if(message.type === 'REPLY'){
+							await message.fetchReference().then(repliedTo =>{
+									if(repliedTo.attachments.size > 0){
+										imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
+									}else{
+										imgurl = scrapetext.split(',')[1];
+									}
+								}).catch (err =>{
+									console.log(err);
+									imgurl = scrapetext.split(',')[1];
+								});
+							}else{
+								if(message.attachments.size >0){
+									imgurl = message.attachments.first().url;
+								} else{
 									imgurl = scrapetext.split(',')[1];
 								}
-							}).catch (err =>{
-								console.log(err);
-								imgurl = scrapetext.split(',')[1];
-							});
-						}else{
-							if(message.attachments.size >0){
-								imgurl = message.attachments.first().url;
+							}
+	
+							imgurl = encodeURI(imgurl);
+
+							if (typeof msg.split(",")[1] === 'undefined'){
+								duration = '5 min';
 							} else{
-								imgurl = scrapetext.split(',')[1];
-							}
-						}
-
-						imgurl = encodeURI(imgurl);
-						//console.log(imgurl + '');
-						//console.log(title + '');	
+								duration = msg.split(",")[1];
+								duration = duration.replace(/\s/g, '');
+								duration = setLength(duration);
+		
+								processtime = duration.replace(/\s/g, '');
+								if(processtime.includes('d')){
+									days = parseInt(processtime.split('d')[0]);
+									processtime = processtime.split('d')[1];
+								}
+									
+									if(processtime.includes('h')){
+										var str1 = processtime.split('h')[0];
+										hours = parseInt(processtime.split('h')[0]);
+										processtime = processtime.split('h')[1];
+									}
+									
+									if(processtime.includes('m')){
+										minutes = parseInt(processtime.split('m')[0]);
+									}
+								}
+								
+								if (typeof msg.split(",")[2] === 'undefined'){
+									reserve = '0';
+								} else{
+									reserve = msg.split(",")[2];
+									reserve = reserve.replace(/\s/g, '');
+								}
+								seller = message.author;
+					}
 					
-					
-					if (typeof msg.split(",")[1] === 'undefined'){
-						duration = '5 min';
-					} else{
-						duration = msg.split(",")[1];
-						duration = duration.replace(/\s/g, '');
-						duration = setLength(duration);
-
-						processtime = duration.replace(/\s/g, '');
-						if(processtime.includes('d')){
-							days = parseInt(processtime.split('d')[0]);
-							processtime = processtime.split('d')[1];
-						}
-							
-							if(processtime.includes('h')){
-								var str1 = processtime.split('h')[0];
-								hours = parseInt(processtime.split('h')[0]);
-								processtime = processtime.split('h')[1];
-							}
-							
-							if(processtime.includes('m')){
-								minutes = parseInt(processtime.split('m')[0]);
-							}
-						}
-
-						
-						if (typeof msg.split(",")[2] === 'undefined'){
-							reserve = '0';
-						} else{
-							reserve = msg.split(",")[2];
-							reserve = reserve.replace(/\s/g, '');
-						}
-
-						let descript = randommsg('start');
-						seller = message.author;
-						
+					let descript = randommsg('start');
+											
 					//initial message						
 						var authormsg = 'Åuction ╙isting ïnteractive Gangsta';
 						let iEmbed = new MessageEmbed()
@@ -1013,13 +1059,10 @@ if(msg == '!help'){
 					//eventually want to convert this to a true time check system instead of using delays
 						const auctionstart = new Date();
 						var startTime = auctionstart.getTime();
-						//console.log(days + 'd' + hours + 'h' + minutes + 'm');
 						var minutesToAdd = (days * 24 * 60) + (hours * 60) + minutes;
 						let auctionend = new Date(startTime + minutesToAdd*60000);
 						duration = Math.ceil((auctionend - auctionstart)/1000)*1000;
-						//console.log(duration + ' duration');
 						var minsleft = Math.ceil(duration/(60*1000));
-						//console.log(minsleft + ' minsleft');
 						var hoursleft;
 						var daysleft;
 						if(minsleft >= 60){
@@ -1052,14 +1095,6 @@ if(msg == '!help'){
 
 						var footertxt = '[' + auctiontext + '] \n bid commands: !bid !bit !biddup';
 						var authormsg = 'NO BIDS YET';
-						//console.log(auctiontext + '');
-						//console.log(title + '');
-						//console.log(nfturl + '');
-						//console.log(authormsg + '');
-						//console.log(imgurl + '');
-						//console.log(reserve + '');
-						//console.log(highbidder + '');
-
 
 						let aEmbed = new MessageEmbed()
 							.setColor(embedColor)							
@@ -1076,9 +1111,6 @@ if(msg == '!help'){
 						message.channel.send({ embeds: [aEmbed] }).then(auctionEmbed => {
 							dbSet(auctionEmbed.id, "0", 'N/A', reserve,'N/A'); //, startTime, endTime);
 						});
-								
-					
-						
 			
 			// below code is for update intervals
 
@@ -1087,12 +1119,9 @@ if(msg == '!help'){
 							if (duration/1000 > 60){
 								nextupdate = duration % 60000 + 60000;
 							} else {
-								nextupdate = 50000;
+								nextupdate = 30000;
 							}
-							
-							//console.log('initial nextupdate: ' + nextupdate);
-							//console.log('initial duration: ' + duration);
-							
+														
 				while(duration > 0 && killauction == false){
 								await sleep(nextupdate);
 								var dbchannel = await client.channels.cache.get(databasechannel);
@@ -1108,7 +1137,6 @@ if(msg == '!help'){
 								let updateEmbed = await msgembed.embeds[0];
 								
 								duration = duration - nextupdate;
-								//console.log(duration);				
 								if(duration >= 3*60000){ //more than 2 minutes
 									nextupdate = duration % 60000 + 60000;
 								} else if(duration > 69000){ //between 1 and 2 minutes
@@ -1276,14 +1304,23 @@ if(msg == '!help'){
 					updateEmbed.setImage(imgurl);
 				}		
 					killauction = false;
-			})();	
-				}					
-				
-			}
+			
+					nextauction = await getNextAuction();
+					console.log(nextauction);
+			
+		} while(!(nextauction == 'NO QUEUE'))
+		message.channel.send('any more out there? queue empty.');
+	})();
+		}						
+		}
 		} else{
 			message.react('❌');
 			message.reply('yoo iz need an adult fo dat.');
-		}			
+		}	
+		
+		
+		
+	
 	}
 
 	
@@ -1362,7 +1399,7 @@ if(msg == '!help'){
 					let hasLetter = /[a-zA-Z]/.test(bidamount);				
 					let isnum = /^\d+$/.test(bidamount);
 					bid = parseInt(+bidamount);
-					if(+bidamount > bid || +bidamount < 1374513896){
+					if(+bidamount > bid){
 						var decimalbid = true; 
 					}
 
@@ -1429,6 +1466,8 @@ if(msg == '!help'){
 							bidmsg = bidmsg + '\n *lik dem dalmashuns... me ant linda not look lik crewela, but she ax liker.*';
 						} else if(bid == 121){
 							bidmsg = bidmsg + '\n *1 point TWENTY ONE GIGGAWEEDZ*';
+						} else if(bid == 123){
+							bidmsg = bidmsg + '\n *noice countin my man... wanna try 456 now?*';
 						} else if(bid == 180){
 							bidmsg = bidmsg + '\n *wicka wicka 180... turn dis beat right round!*';
 						} else if(bid == 222){
@@ -1492,7 +1531,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(reaction.message.channel.id == queuechannel){
 		if(reaction.emoji.name === '❌'){
 			let qUser = reaction.message.embeds[0].fields[0].value;
-			//console.log(reaction.message.guild.member(user).roles.cache.has(puzzlegang));
 			var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
 			
 			if(qUser.includes(user.id) || hasRole){
@@ -1522,7 +1560,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					reaction.message.delete();
 				}
 				
-				//console.log(removemsgid + '');
 			}else{
 				reaction.users.remove(user);
 			}
