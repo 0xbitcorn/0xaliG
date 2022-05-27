@@ -644,7 +644,7 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	if(qmsg == itemselected){
 		qmsg = 'NO QUEUE';
 	}{
-		qmsg = qmsg.replace(itemselected,'').replace(',,',',');
+		qmsg = qmsg.replace(','+itemselected,'').replace(itemselected,'').replace(',,',',');
 		if(qmsg.charAt(0) == ','){
 			qmsg = qmsg.slice(1);
 		}
@@ -679,7 +679,6 @@ function setLength(time){
 	let daysSL = 0;
 	let hoursSL = 0;
 	let minuteSL = 0;
-
 		if(time.includes(':')){
 			hoursSL = time.split(':')[0];
 			minuteSL = time.split(':')[1];
@@ -707,6 +706,10 @@ function setLength(time){
 		} else{
 			let processtime = time;
 
+			if(!(processtime.includes('d') || processtime.includes('h')) || processtime.includes ('m')){
+				processtime= processtime + 'm';
+			}
+
 			if(processtime.includes('d')){
 				daysSL = processtime.split('d')[0];
 				processtime = processtime.split('d')[1];
@@ -733,7 +736,7 @@ function setLength(time){
 					hoursSL = hoursSL + Math.floor(minuteSL/60);
 					minuteSL = minuteSL % 60;
 				}
-			}	
+			}
 				
 	}
 			time = daysSL + 'd ' + hoursSL + 'h ' + minuteSL + 'm ';   	
@@ -1353,9 +1356,9 @@ if(msg == '!help'){
 					nextauction = await getNextAuction();
 			
 		} while(!(nextauction == 'NO QUEUE'))
-
-	let achan = await client.channels.cache.get(auctionchannel);
-		achan.send('any more out there? queue empty.');
+		
+		console.log('queue empty');
+		await client.channels.cache.get(auctionchannel).send('any more out there? queue empty.');
 	})();
 		}						
 		}
