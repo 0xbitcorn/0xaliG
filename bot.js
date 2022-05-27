@@ -611,7 +611,7 @@ async function getNextAuction() {
 			}
 		});
 	//}while();
-if(qmsg = 'NO QUEUE'){ return qmsg;}
+if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	if(qmsg == itemselected){
 		qmsg = 'NO QUEUE';
