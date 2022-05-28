@@ -577,7 +577,6 @@ async function getNextAuction() {
 		qmsg = qmsg.replace(/\s+/g, '');
 
 		if(qmsg.includes(',')){
-
 			qentries = qmsg.split(',');
 		}else{
 			qentries[0] = qmsg;
@@ -591,17 +590,23 @@ async function getNextAuction() {
 			try{
 				queueitem = await qchannel.messages.fetch(i+'');
 				qembed = await queueitem.embeds[0];
-				if(qembed.fields[3].value == 'N/A'){
+
+				//qseller = field[0].value;
+				//qduration = field[1].name;
+				//qreserve = field[1].value;
+				console.log('timestamp: ' + qembed.timestamp);
+
+				if(qembed.timestamp == null){
 					itemselected = i;
 					return true;}
-				let dateArray = new Array();
-				dateArray = processDateFormat(qembed.fields[3].value).split(',');
-				let now = moment.utc();
+				//let dateArray = new Array();
+				//dateArray = processDateFormat(qembed.fields[3].value).split(',');
+				let now = moment();
 
 				//currently limit to only adding days, hours, minutes
-				let qnotbefore = moment.utc([now.year(),dateArray[0],dateArray[1],dateArray[2],dateArray[3]]);
-				console.log('now = ' + now + ' and not before = ' + qnotbefore);
-				if(now.isSameOrAfter(qnotbefore)){
+				//let qnotbefore = moment.utc([now.year(),dateArray[0],dateArray[1],dateArray[2],dateArray[3]]);
+				//console.log('now = ' + now + ' and not before = ' + qnotbefore);
+				if(now.isSameOrAfter(qembed.timestamp)){
 					itemselected = i;
 					return true;
 				}; 
@@ -616,7 +621,7 @@ async function getNextAuction() {
 
 					if(qmsg == i){
 						qmsg = 'NO QUEUE';
-						dbmsg.edit(qmsg);
+						await dbmsg.edit(qmsg);
 					}else{
 						qmsg = qmsg.replace(i,'').replace(',,',',').replace(', ','');
 						if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
@@ -626,7 +631,7 @@ async function getNextAuction() {
 						if(qmsg.charAt(qmsg.length) == ','){
 							qmsg = qmsg.slice(0,-1);
 						}
-						dbmsg.edit(qmsg);
+						await dbmsg.edit(qmsg);
 					}
 				}				
 			}
@@ -653,8 +658,10 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	
 	
 	let qseller = await qembed.fields[0].value;
-	let qduration = await qembed.fields[1].value;
-	let qreserve = await qembed.fields[2].value;
+	let qduration = await qembed.fields[1].name.replace('DURATION: ','');
+	console.log('qduration: '+ qduration);
+	let qreserve = await qembed.fields[1].value.replace('RESERVE: ','').replace(' LRC','');
+	console.log('qreserve: '+ qreserve);
 	let qimage = await qembed.thumbnail.url;
 	let qtitle = await qembed.title;
 	let qurl = await qembed.url;
@@ -886,11 +893,17 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 				.setThumbnail(qImg)
 				.addFields(
 					{ name: 'SELLER', value: '<@'+message.author+'>'},
-					{ name: 'DURATION', value: qduration, inline: true},
-					{ name: 'RESERVE', value: qreserve, inline: true},
-					{ name: 'NOT BEFORE', value: qdelay, inline: true}
+					{ name: 'DURATION: ' + qduration, value: 'RESERVE: ' + qreserve +' LRC', inline: true},
+					//{ name: 'RESERVE', value: qreserve, inline: true},
+					//{ name: 'NOT BEFORE', value: qdelay, inline: true}
 				)
-				.setFooter({text: '✅ = subscribe to an alert  \n❌ = remove from the queue (SELLER/ADMIN)'})
+			if(!(qdelay == 'N/A')){
+				qEmbed.setTimestamp(date);
+				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)\nSCHEDULED AUCTION '});
+			}else{
+				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)'});
+			}
+				
 			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
 			queueEmbed.react('✅').then(
 				queueEmbed.react('❌'));			
@@ -902,7 +915,7 @@ if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has
 				qmsg = qmsg.replace(',,',',').replace(/\s+/g,'');
 			}
 
-			dbmsg.edit(qmsg);
+			await dbmsg.edit(qmsg);
 			message.delete();
  
 		} catch(err){
