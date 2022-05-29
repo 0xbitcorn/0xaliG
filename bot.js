@@ -17,14 +17,6 @@ client.once('ready', () =>{
 	client.user.setStatus('online');
 	client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
 	ClearDatabase();
-
-	var duration = 0;
-	var highbid = 0;
-	
-	client.channels.cache.get(queuechannel).send('queue check').then(tempmsg => {
-		setTimeout(() => tempmsg.delete(), 2000)
-	}).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
-	
 })
 
 client.on('error', console.log)
@@ -36,6 +28,7 @@ client.login(auth.token)
 /////////////////
 var timeouts = [];
 const bitcorn = '416645304830394368';			// bitcorn user id
+const alig = '974143111418765313';				// aliG user id
 const server = '962059766388101301';			// server id
 const auctionchannel = '974014169483452436';	// auction channel
 const auctiontest = '976917431471710289';		// auction test channel
@@ -462,11 +455,94 @@ async function scrape(nfturl){
 	return imageTitle + ',' + imageHref;
 }
 
+
+//add item to queue
+async function queueAdd(message){
+	try{
+		var msg = message.content.toLowerCase();
+		var dbchannel = await client.channels.cache.get(databasechannel);
+		var dbmsg = await dbchannel.messages.fetch(queuemsg);
+		let qmsg = dbmsg.content;
+		var inputs;
+		if(msg.includes('!queue')){
+			inputs = msg.replace('!queue','').replace(/\s+/g,'');
+		}else{
+			inputs = msg.replace('!auction','').replace(/\s+/g,'');
+		}
+		let arr = new Array();
+		arr = inputs.split(',');
+		
+		if (!(isValidURL(arr[0]))){
+			message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
+			throw 'Parameter is not a valid url!';}
+		
+		var details = await scrape(arr[0]);
+		var qTitle = details.split(',')[0];
+		var qImg = details.split(',')[1];
+		qImg = encodeURI(qImg);
+
+		var qduration = setLength(arr[1]);
+		var qreserve = '0';
+		if (!(typeof arr[2] === 'undefined')){qreserve = arr[2];}
+		var qdelay = 'N/A';
+		if (!(typeof arr[3] === 'undefined')){qdelay = arr[3];}
+		if(!(qdelay == 'N/A')){
+
+			if(qdelay > 48){
+				message.reply('Yo, check it! me set dat delay to 48 hrs. Dat be me current max delay.');
+				qdelay = 48;
+			}
+			var date = new Date();
+			date = date.getTime() + (qdelay*60*60*1000);
+			qdelay = dateFormat(date, "UTC:mmm d h:MM TT Z"); 
+		}
+
+			let qEmbed = new MessageEmbed()
+				.setColor(infocolor)
+				.setTitle(qTitle)
+				.setURL(arr[0])
+				.setImage(qImg)
+				.addFields(
+					{ name: 'SELLER', value: '<@'+message.author+'>'},
+					{ name: 'DURATION: ' + qduration, value: 'RESERVE: ' + qreserve +' LRC', inline: true},
+					//{ name: 'RESERVE', value: qreserve, inline: true},
+					//{ name: 'NOT BEFORE', value: qdelay, inline: true}
+				)
+			if(!(qdelay == 'N/A')){
+				qEmbed.setTimestamp(date);
+				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)\nSCHEDULED AUCTION '});
+			}else{
+				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)'});
+			}
+				
+			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
+			queueEmbed.react('✅').then(
+				queueEmbed.react('❌'));			
+
+			if(qmsg == 'NO QUEUE'){
+				qmsg = queueEmbed.id;
+			}else{
+				qmsg = qmsg + ',' + queueEmbed.id;
+				qmsg = qmsg.replace(',,',',').replace(/\s+/g,'');
+			}
+
+			await dbmsg.edit(qmsg);
+			return true;
+			
+		} catch(err){
+			message.react('❌');
+			console.log(err);
+			return false;
+		}
+}
+
+
 // clear auction message in database 
 async function ClearDatabase(){
 	let dbchannel = await client.channels.cache.get(databasechannel);
 	let dbmsg = await dbchannel.messages.fetch(databasemsg);
-	dbmsg.edit('NO CURRENT AUCTION');
+	await dbmsg.edit('NO CURRENT AUCTION');
+	await client.channels.cache.get(queuechannel).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
 }
 
 // process database message
@@ -540,6 +616,62 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	
 	return dbmsg.edit(dbstr);
 }
+
+async function queuemsgcheck(){
+	//load up queue db msg
+	var qupdated = false;
+	var dbchannel = await client.channels.cache.get(databasechannel);
+	var dbmsg = await dbchannel.messages.fetch(queuemsg);
+	var qmsg = dbmsg.content;
+	var qopposite = qmsg;
+
+	//load up queue channel
+	var qchannel = await client.channels.cache.get(queuechannel);
+	//queueitem = await qchannel.messages.fetch({limit: 100});
+	
+	//process all fetched messages
+	qchannel.messages.fetch().then(messages => {
+		messages.forEach(msg => {
+			if(!qmsg == 'NO QUEUE'){
+				//find any message id's that are in qmsg, but shouldn't be
+				if(qopposite.includes(msg.id)){
+					qopposite = qopposite.replace(msg.id,'').replace(',,',',');
+					if(qopposite.charAt(0) == ','){qopposite.slice(1)}
+					if(qopposite.charAt(qopposite.length) == ','){qopposite.slice(0,-1)}
+				}
+			}else{
+				qopposite = '';
+			}
+
+			//find any message id's that are NOT in qmsg, but should be (add missing ones to qmsg)
+			if(!(qmsg.includes(msg.id))){
+				if (msg.embeds[0]){
+					if(qmsg == 'NO QUEUE'){
+						qmsg = msg.id;
+					}else{
+						qmsg = qmsg + ',' + msg.id;
+					}
+					qupdate = true;
+				};
+			}
+		});
+	  });
+
+	// once all messages are processed, check if qmsg contains any that weren't found... if so, remove them
+	if(qopposite.length > 0){
+		//console.log(qopposite);
+		qmsg.replace(qopposite,'').replace(',,',',');
+		if(qmsg.charAt(0) == ','){qmsg.slice(1)}
+		if(qmsg.charAt(qmsg.length) == ','){qmsg.slice(0,-1)}
+		qupdated = true;
+	}
+
+	//if qmsg needs updated, update message
+	  if(qupdated){
+		  dbmsg.edit(qmsg);
+	  }
+}
+
 function processDateFormat(str){
 	let monthlookup = str.split(' ')[0].replace(/\s+/g, '');
 	let month = monthAbbrev[monthlookup] ? monthAbbrev[monthlookup] : monthlookup;
@@ -563,12 +695,21 @@ const asyncSome = async (arr, predicate) => {
 
 // grab details for next auction
 async function getNextAuction() {
+	//validate queue message entries and update if needed
+	//console.log('Validating Queue Message');
+	queuemsgcheck();
 
 	//need to do a check to see if an auction has started since this getNextAuction cycle was started.
 	//if so... abort process.
 	var dbchannel = await client.channels.cache.get(databasechannel);
-
+	//console.log('Getting Next Auction Details');
 	do{
+//		var auctionmsg = await dbchannel.messages.fetch(databasemsg);
+//		var amsg = auctionmsg.content;
+//		if(!(amsg == 'NO CURRENT AUCTION')){
+//			console.log('an auction was started; aborting get next auction');
+//			return 'live auction';
+//	}
 		var dbmsg = await dbchannel.messages.fetch(queuemsg);
 		var qmsg = dbmsg.content;
 		var qentries = new Array();
@@ -594,7 +735,7 @@ async function getNextAuction() {
 				//qseller = field[0].value;
 				//qduration = field[1].name;
 				//qreserve = field[1].value;
-				console.log('timestamp: ' + qembed.timestamp);
+				//console.log('timestamp: ' + qembed.timestamp);
 
 				if(qembed.timestamp == null){
 					itemselected = i;
@@ -638,8 +779,8 @@ async function getNextAuction() {
 		});
 
 		if(itemselected == 'N/A'){
-			await sleep(60000); //wait a minute
-			console.log('waited a minute, trying again');
+			await sleep(15000); //wait 15 seconds 
+			console.log('Listening for new queue items...');
 		}
 
 	}while(itemselected == 'N/A');
@@ -659,10 +800,10 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	
 	let qseller = await qembed.fields[0].value;
 	let qduration = await qembed.fields[1].name.replace('DURATION: ','');
-	console.log('qduration: '+ qduration);
+	//console.log('qduration: '+ qduration);
 	let qreserve = await qembed.fields[1].value.replace('RESERVE: ','').replace(' LRC','');
-	console.log('qreserve: '+ qreserve);
-	let qimage = await qembed.thumbnail.url;
+	//console.log('qreserve: '+ qreserve);
+	let qimage = await qembed.image.url;
 	let qtitle = await qembed.title;
 	let qurl = await qembed.url;
 	
@@ -761,12 +902,19 @@ function containsWord(str, word) {
 
 // whenever a message if created, run this process 
 client.on("messageCreate", async message => {
-
+var nextauction;
+var startup = false;
 	// if the message isn't in either the auction channel, test channel, or queue channel, exit
 	if(!(message.channel.id == auctionchannel) && !(message.channel.id == auctiontest) && !(message.channel.id == queuechannel)) return;
 
-	// check if the author is a bot and quit if so (unless in the queuechannel ==> for triggering the initial cache)	
-	if(message.author.bot && !(message.channel.id == queuechannel)) return;
+	// ALI-G STARTUP
+	if(message.author == alig && message.content.includes('Iz awkshun time!')){
+		message.delete();
+		startup = true;
+	}else{
+		// check if the author is a bot and quit if so (unless in the queuechannel ==> for triggering the initial cache)	
+		if(message.author.bot && !(message.channel.id == queuechannel)) return;
+	}
 
 	// set initial variables
 	var msg = message.content.toLowerCase();		// message content (converted to lowercase)
@@ -777,185 +925,116 @@ client.on("messageCreate", async message => {
 if(isLive){	embedColor = livecolor; auctiontext = 'AUCTION';}
 else{ embedColor = infocolor; auctiontext = 'FAKE AUCTION';}
 
-// check if member has the necessary role for using commands
-if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){	
-	if(message.author.id == bitcorn){
-		// create a new database entry
-		if(msg.includes('!createmsg')){
-			client.channels.cache.get(databasechannel).send('NEW DATABASE MESSAGE CREATED');
-		}
-
-		// get next auction
-		if(msg.includes('!next')){
-			let nextauction = await getNextAuction();
-			message.reply(nextauction + '');			
-		}
-
-		// count the number of winners in current prize message
-		if(msg.includes('!count')){
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(prizemsg);
-			let pmsg = dbmsg.content;
-			message.reply(pmsg.split(',').length + '/42');
-		}
-
-		//scrape information from website
-		if(msg.includes('!scrape')){
-		var details = await scrape(msg.split(' ')[1]);
-		var deTitle = details.split(',')[0];
-		var deImg = details.split(',')[1];
-		let sEmbed = new MessageEmbed()
-							.setColor(infocolor)
-							.setTitle(deTitle)
-							.setDescription('Å╙ï-G SCRAPE TEST')
-							.setImage(deImg)
-				let scrapeEmbed = message.channel.send({ embeds: [sEmbed] });
-		}
-
-		// push edit to prize message (custom set below)
-		if(msg.includes('!edit')){
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(prizemsg);
-			let pmsg = '<@933803317019148348>\n<@930299609530662952>\n<@350491516893921301>\n<@197519618028339200>\n<@176420246989701121>\n<@939550468525396078>\n<@940260532139733023>\n<@135127522152022017>\n<@144923664335241216>\n<@229038935358046211>\n<@564797291635146753>';
-			dbmsg.edit(pmsg);
-		}
-
-		// push a dm (custom set below)
-		if(msg.includes('!dm')){
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(prizemsg);
-			let userTodm = msg.split(' ')[1];
-			userTodm = userTodm.replace(/\s+/g, '').replace('<@', '').replace('>','');
-
-			const user = await client.users.fetch(userTodm).catch(() => null);
-			
-			if (!user) return message.channel.send("User not found :(");
-			let dmcontent = "uh... hi";
-			await user.send(dmcontent).catch(() => {
-				message.channel.send("User has DMs closed or has no mutual servers with the bot:(");
-			});
-		}
-		
-		// remove a user from the prize message
-		if(msg.includes('!remove')){
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(prizemsg);
-			let pmsg = dbmsg.content;
-
-			let userToRemove = '\n' + msg.split(' ')[1];
-			userToRemove = userToRemove.replace(/\s+/g, '');
-			if(pmsg.includes(userToRemove)){
-				pmsg = pmsg.replace(userToRemove,'');
-				pmsg = pmsg.replace('\n',', ');
+if(!startup){
+	// check if member has the necessary role for using commands
+	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){	
+		if(message.author.id == bitcorn){
+			// create a new database entry
+			if(msg.includes('!createmsg')){
+				client.channels.cache.get(databasechannel).send('NEW DATABASE MESSAGE CREATED');
 			}
-			dbmsg.edit(pmsg);
-		}
-	}
-	
-	if(msg.includes('!queue')){
-		try{
-		var dbchannel = await client.channels.cache.get(databasechannel);
-		var dbmsg = await dbchannel.messages.fetch(queuemsg);
-		let qmsg = dbmsg.content;
-		let inputs = msg.replace('!queue','').replace(/\s+/g,'');
-		let arr = new Array();
-		arr = inputs.split(',');
-		
-		if (!(isValidURL(arr[0]))){
-			message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
-			throw 'Parameter is not a valid url!';}
-		
-		var details = await scrape(arr[0]);
-		var qTitle = details.split(',')[0];
-		var qImg = details.split(',')[1];
-		qImg = encodeURI(qImg);
 
-		var qduration = setLength(arr[1]);
-		var qreserve = '0';
-		if (!(typeof arr[2] === 'undefined')){qreserve = arr[2];}
-		var qdelay = 'N/A';
-		if (!(typeof arr[3] === 'undefined')){qdelay = arr[3];}
-		if(!(qdelay == 'N/A')){
-
-			if(qdelay > 48){
-				message.reply('Yo, check it! me set dat delay to 48 hrs. Dat be me current max delay.');
-				qdelay = 48;
+			// get next auction
+			if(msg.includes('!next')){
+				let nextauction = await getNextAuction();
+				message.reply(nextauction + '');			
 			}
-			var date = new Date();
-			date = date.getTime() + (qdelay*60*60*1000);
-			qdelay = dateFormat(date, "UTC:mmm d h:MM TT Z"); 
-		}
 
-			let qEmbed = new MessageEmbed()
-				.setColor(infocolor)
-				.setTitle(qTitle)
-				.setURL(arr[0])
-				.setThumbnail(qImg)
-				.addFields(
-					{ name: 'SELLER', value: '<@'+message.author+'>'},
-					{ name: 'DURATION: ' + qduration, value: 'RESERVE: ' + qreserve +' LRC', inline: true},
-					//{ name: 'RESERVE', value: qreserve, inline: true},
-					//{ name: 'NOT BEFORE', value: qdelay, inline: true}
-				)
-			if(!(qdelay == 'N/A')){
-				qEmbed.setTimestamp(date);
-				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)\nSCHEDULED AUCTION '});
-			}else{
-				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)'});
+			// count the number of winners in current prize message
+			if(msg.includes('!count')){
+				var dbchannel = await client.channels.cache.get(databasechannel);
+				var dbmsg = await dbchannel.messages.fetch(prizemsg);
+				let pmsg = dbmsg.content;
+				message.reply(pmsg.split(',').length + '/42');
 			}
+
+			//scrape information from website
+			if(msg.includes('!scrape')){
+			var details = await scrape(msg.split(' ')[1]);
+			var deTitle = details.split(',')[0];
+			var deImg = details.split(',')[1];
+			let sEmbed = new MessageEmbed()
+								.setColor(infocolor)
+								.setTitle(deTitle)
+								.setDescription('Å╙ï-G SCRAPE TEST')
+								.setImage(deImg)
+					let scrapeEmbed = message.channel.send({ embeds: [sEmbed] });
+			}
+
+			// push edit to prize message (custom set below)
+			if(msg.includes('!edit')){
+				var dbchannel = await client.channels.cache.get(databasechannel);
+				var dbmsg = await dbchannel.messages.fetch(prizemsg);
+				let pmsg = '<@933803317019148348>\n<@930299609530662952>\n<@350491516893921301>\n<@197519618028339200>\n<@176420246989701121>\n<@939550468525396078>\n<@940260532139733023>\n<@135127522152022017>\n<@144923664335241216>\n<@229038935358046211>\n<@564797291635146753>';
+				dbmsg.edit(pmsg);
+			}
+
+			// push a dm (custom set below)
+			if(msg.includes('!dm')){
+				var dbchannel = await client.channels.cache.get(databasechannel);
+				var dbmsg = await dbchannel.messages.fetch(prizemsg);
+				let userTodm = msg.split(' ')[1];
+				userTodm = userTodm.replace(/\s+/g, '').replace('<@', '').replace('>','');
+
+				const user = await client.users.fetch(userTodm).catch(() => null);
 				
-			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
-			queueEmbed.react('✅').then(
-				queueEmbed.react('❌'));			
-
-			if(qmsg == 'NO QUEUE'){
-				qmsg = queueEmbed.id;
-			}else{
-				qmsg = qmsg + ',' + queueEmbed.id;
-				qmsg = qmsg.replace(',,',',').replace(/\s+/g,'');
+				if (!user) return message.channel.send("User not found :(");
+				let dmcontent = "uh... hi";
+				await user.send(dmcontent).catch(() => {
+					message.channel.send("User has DMs closed or has no mutual servers with the bot:(");
+				});
 			}
+			
+			// remove a user from the prize message
+			if(msg.includes('!remove')){
+				var dbchannel = await client.channels.cache.get(databasechannel);
+				var dbmsg = await dbchannel.messages.fetch(prizemsg);
+				let pmsg = dbmsg.content;
 
-			await dbmsg.edit(qmsg);
-			message.delete();
- 
-		} catch(err){
-			message.react('❌');
-			console.log(err);
+				let userToRemove = '\n' + msg.split(' ')[1];
+				userToRemove = userToRemove.replace(/\s+/g, '');
+				if(pmsg.includes(userToRemove)){
+					pmsg = pmsg.replace(userToRemove,'');
+					pmsg = pmsg.replace('\n',', ');
+				}
+				dbmsg.edit(pmsg);
+			}
 		}
 	}
-}
 
-if(msg == '!help'){
-	let hEmbed = new MessageEmbed()
-	.setColor(infocolor)
-	.setTitle('[Å╙ï-G BASICS]')
-	.addFields(
-		{ name: '[BID COMMANDS]', value: '!bid, !bit, or !biddup <amount> \n *all perform the same function* \n \n '},
-		{ name: '\u200B', value: '\u200B' },
-		{ name: '[AUCTION COMMANDS]', value: '*Limited to certain roles, only one auction allowed at a time*'},
-		{ name: 'START AUCTION', value: '1.) Post your image \n 2.) Reply to that image post with the command: \n      !auction **<NFT link>**, **<duration>**, <reserve> \n *<NFT link> is the link to the NFT on the explorer \n <duration> can be entered as HH:MM or as #d #h #m \n <items> in bold are required*'},								
-		{ name: 'OVERRIDE BID', value: 'Admin can override the current bid by using the command: \n !override <amount>, <@biddername>'},
-		{ name: 'KILL AUCTION', value: 'Admin can kill an auction by using the command: \n !auction kill \n '}
-	)
-	.setDescription('If you have any questions or suggestions,\n please DM @BTCornBLAIQchnz')
-	.setThumbnail(botimg)
-	.setFooter({text: 'Git lernt up den drop sum bits! Biddup yo self! Respek!'})
-	try{
-		await message.author.send({ embeds: [hEmbed] });
-		message.react('📨');
-	} catch(err){
-		message.author.send("Yo, u iz haz dem DMs closed or sumthin.");
-		message.channel.send({ embeds: [hEmbed] });
+	if(msg == '!help'){
+		let hEmbed = new MessageEmbed()
+		.setColor(infocolor)
+		.setTitle('[Å╙ï-G BASICS]')
+		.addFields(
+			{ name: '[BID COMMANDS]', value: '!bid, !bit, or !biddup <amount> \n *all perform the same function* \n \n '},
+			{ name: '\u200B', value: '\u200B' },
+			{ name: '[AUCTION COMMANDS]', value: '*Limited to certain roles, only one auction allowed at a time*'},
+			{ name: 'START AUCTION', value: '1.) Post your image \n 2.) Reply to that image post with the command: \n      !auction **<NFT link>**, **<duration>**, <reserve> \n *<NFT link> is the link to the NFT on the explorer \n <duration> can be entered as HH:MM or as #d #h #m \n <items> in bold are required*'},								
+			{ name: 'OVERRIDE BID', value: 'Admin can override the current bid by using the command: \n !override <amount>, <@biddername>'},
+			{ name: 'KILL AUCTION', value: 'Admin can kill an auction by using the command: \n !auction kill \n '}
+		)
+		.setDescription('If you have any questions or suggestions,\n please DM @BTCornBLAIQchnz')
+		.setThumbnail(botimg)
+		.setFooter({text: 'Git lernt up den drop sum bits! Biddup yo self! Respek!'})
+		try{
+			await message.author.send({ embeds: [hEmbed] });
+			message.react('📨');
+		} catch(err){
+			message.author.send("Yo, u iz haz dem DMs closed or sumthin.");
+			message.channel.send({ embeds: [hEmbed] });
+		}
 	}
-}
 
+	if(msg.includes('!queue') || msg.includes('!auction')){
+		var addedtoqueue = queueAdd(message);
+		if(addedtoqueue){message.delete();}
+	}
 
-	if (msg.includes('!auction')) {
-		msg = msg.slice(8).replace(/\s+/g,'');
+} else{
 
 	// limit these functions to approved auction roles				
-	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){
-			
+	if( startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){
 			// kill function (limit to admin only)
 			if(msg == 'kill'){
 				if(message.member.roles.cache.has(puzzlegang) || message.member.roles.cache.has(kernalcommander)){
@@ -987,391 +1066,412 @@ if(msg == '!help'){
 				// Starting from a sent !auction message
 				// set status to dnd and post initial message	
 
-				if(client.user.presence.status == 'dnd'){
+				if(!startup && client.user.presence.status == 'dnd'){
 					if(dbmsg == 'NO CURRENT AUCTION'){
 						client.user.setStatus('online');
 						client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
 						message.reply('sorry, me waz on the crapper... wut now?')
-					}else{;
-						message.react('❌');
-						message.reply('Yo, my main man... one awkshun at a time. Check bak latr!')}
-				} else{
-					var nextauction = 'NO QUEUE';	
-	(async() => {
-		do{		
-	
-					//need to figure out how to have a time based check... maybe combine !queue and !auction... then have it check if there's a delay or current auction going... 
-					//if either, set queue, if not, go live.
-
-					if(!(nextauction == 'NO QUEUE')){
-						console.log('next auction');
-						await sleep(15000);
-						let auctionDeets = new Array();
-						auctionDeets = nextauction.split(',');
-
-						sellerid = auctionDeets[0].replace('<@','').replace('>','');		// NFT SELLER
-							let user = await client.users.cache.get(sellerid);
-							seller = user.username;
-						duration = auctionDeets[1];		// AUCTION DURATION
-							days = parseInt(duration.split('d')[0]);
-							duration = duration.split('d')[1];
-							hours = parseInt(duration.split('h')[0]);
-							duration = duration.split('h')[1];
-							minutes = parseInt(duration.split('m')[0]);
-						reserve = auctionDeets[2];		// SELLER SET RESERVE
-						imgurl = auctionDeets[3];		// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
-						title = auctionDeets[4];		// NFT TITLE
-						nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
-
-						highbid = '0';					// CURRENT HIGH BID
-						highbidder = "N/A";				// CURRENT HIGH BIDDER
-
-						priorbid = '0';				// PREVIOUS HIGH BID
-						priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
-
-						killauction = false;			// KILL AUCTION TRIGGER
 					}else{
-						nfturl = msg.split(",")[0];
-					
-						if (!(isValidURL(nfturl))){
-							message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
-							throw 'Parameter is not a valid url!';
+						var addedtoqueue = await queueAdd(message);
+						if(addedtoqueue){message.reply('Yo, my main man... Added that to the queue!');}
+	}} else{
+		(async() => {
+			do{		
+					if(!startup){console.log('nextauction: ' + nextauction);}
+						
+					if(startup){
+							console.log('Starting Auction Listener');
+							startup = false
+							do{
+									//if(dbmsg.content == 'NO CURRENT AUCTION'){
+									nextauction = await getNextAuction();
+									//if(nextauction == 'live auction'){
+									//console.log('encountered live auction, aborting secondary process.');
+									//break;
+									//}
+									//console.log(nextauction);
+									console.log('last queue ping: ' + Date.now());
+									if(nextauction == 'NO QUEUE'){await sleep(15000);}
+									//}
+									//else{
+									//console.log('encountered live auction, aborting secondary process.');
+									//}
+							}while(nextauction == 'NO QUEUE');
 						}
-							scrapetext = await scrape(nfturl);
-							title = scrapetext.split(',')[0];
-							
-							if(message.type === 'REPLY'){
-							await message.fetchReference().then(repliedTo =>{
-									if(repliedTo.attachments.size > 0){
-										imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
-									}else{
+
+					console.log('starting next auction');
+					var dbchannel = await client.channels.cache.get(databasechannel);
+					var dbmsg = await dbchannel.messages.fetch(databasemsg);
+					console.log('nextauction: ' + nextauction);
+
+							let auctionDeets = new Array();
+							auctionDeets = nextauction.split(',');
+							sellerid = auctionDeets[0].replace('<@','').replace('>','');		// NFT SELLER
+								let user = await client.users.cache.get(sellerid);
+								seller = user.username;
+							duration = auctionDeets[1];		// AUCTION DURATION
+								days = parseInt(duration.split('d')[0]);
+								duration = duration.split('d')[1];
+								hours = parseInt(duration.split('h')[0]);
+								duration = duration.split('h')[1];
+								minutes = parseInt(duration.split('m')[0]);
+							reserve = auctionDeets[2];		// SELLER SET RESERVE
+							imgurl = auctionDeets[3];		// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
+							title = auctionDeets[4];		// NFT TITLE
+							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
+	
+							highbid = '0';					// CURRENT HIGH BID
+							highbidder = "N/A";				// CURRENT HIGH BIDDER
+	
+							priorbid = '0';				// PREVIOUS HIGH BID
+							priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
+	
+							killauction = false;			// KILL AUCTION TRIGGER
+
+							/* else{
+							nfturl = msg.split(",")[0];
+						
+							if (!(isValidURL(nfturl))){
+								message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
+								throw 'Parameter is not a valid url!';
+							}
+								scrapetext = await scrape(nfturl);
+								title = scrapetext.split(',')[0];
+								
+								if(message.type === 'REPLY'){
+								await message.fetchReference().then(repliedTo =>{
+										if(repliedTo.attachments.size > 0){
+											imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
+										}else{
+											imgurl = scrapetext.split(',')[1];
+										}
+									}).catch (err =>{
+										console.log(err);
+										imgurl = scrapetext.split(',')[1];
+									});
+								}else{
+									if(message.attachments.size >0){
+										imgurl = message.attachments.first().url;
+									} else{
 										imgurl = scrapetext.split(',')[1];
 									}
-								}).catch (err =>{
-									console.log(err);
-									imgurl = scrapetext.split(',')[1];
-								});
-							}else{
-								if(message.attachments.size >0){
-									imgurl = message.attachments.first().url;
-								} else{
-									imgurl = scrapetext.split(',')[1];
 								}
-							}
-	
-							imgurl = encodeURI(imgurl);
-
-							if (typeof msg.split(",")[1] === 'undefined'){
-								duration = '5 min';
-							} else{
-								duration = msg.split(",")[1];
-								duration = duration.replace(/\s+/g, '');
-								duration = setLength(duration);
 		
-								processtime = duration.replace(/\s+/g, '');
-								if(processtime.includes('d')){
-									days = parseInt(processtime.split('d')[0]);
-									processtime = processtime.split('d')[1];
-								}
-									
-									if(processtime.includes('h')){
-										var str1 = processtime.split('h')[0];
-										hours = parseInt(processtime.split('h')[0]);
-										processtime = processtime.split('h')[1];
-									}
-									
-									if(processtime.includes('m')){
-										minutes = parseInt(processtime.split('m')[0]);
-									}
-								}
-								
-								if (typeof msg.split(",")[2] === 'undefined'){
-									reserve = '0';
+								imgurl = encodeURI(imgurl);
+	
+								if (typeof msg.split(",")[1] === 'undefined'){
+									duration = '5 min';
 								} else{
-									reserve = msg.split(",")[2];
-									reserve = reserve.replace(/\s+/g, '');
-								}
-								seller = message.author.username;
-								sellerid = message.author;
-								message.delete();
-								
-					}
-					let descript = randommsg('start');
-											
-					//initial message						
-						var authormsg = 'Åuction ╙isting ïnteractive Gangsta';
-						let iEmbed = new MessageEmbed()
-							.setColor(infocolor)
-							.setTitle('['+ auctiontext + ' STARTED]')
-							.setAuthor({name: authormsg})
-							.setDescription(descript)
-							.setThumbnail(botimg)
-							//.setFooter({text: 'SELLER: ' + seller });
-							let achan = await client.channels.cache.get(auctionchannel);
-							let introEmbed = achan.send({ embeds: [iEmbed] });
-						//save intro id and update embed color
-						
-						client.user.setStatus('dnd');
-						client.user.setActivity('bids (LIVE)', {type: 'LISTENING'});
-
-					//eventually want to convert this to a true time check system instead of using delays
-						let auctionstart = new Date();
-						var startTime = auctionstart.getTime();
-						var minutesToAdd = (days * 24 * 60) + (hours * 60) + minutes;
-						let auctionend = new Date(startTime + minutesToAdd*60000);
-						duration = Math.ceil((auctionend - auctionstart)/1000)*1000;
-						var minsleft = Math.ceil(duration/(60*1000));
-						var hoursleft;
-						var daysleft;
-						if(minsleft >= 60){
-							hoursleft = Math.floor(minsleft/60);
-							if(hoursleft >= 24){
-								daysleft = Math.floor(hoursleft/24);
-								hoursleft = hoursleft % 24;
-							}else{
-								daysleft = 0;
-							}
-						}else{
-							hoursleft = 0;
-						}				
-						
-						minsleft = minsleft % 60;
-
-						var timeleft = '';
-						if(daysleft > 4){
-							timeleft = daysleft + "d" + hoursleft + "h" + minsleft + "m";
-						} else{
-							hoursleft = daysleft * 24 + hoursleft;
-							if(hoursleft>0) {
-								timeleft = hoursleft + ":" + ('00'+minsleft).slice(-2);
-							} else if(minsleft>1){
-								timeleft = minsleft + " mins";
-							} else{
-								timeleft = minsleft + " min";
-							}							
-						}
-
-						var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup';
-						var authormsg = 'NO BIDS YET';
-
-						let aEmbed = new MessageEmbed()
-							.setColor(embedColor)							
-							.setTitle(title)
-							.setURL(nfturl)
-							.setAuthor({name: authormsg})
-							.setImage(imgurl)
-							.addFields(
-								{ name: 'TIME LEFT: ' + timeleft, value: 'RESERVE: ' + reserve + ' LRC', inline: true },
-								{ name: 'HIGH BIDDER', value: highbidder, inline: true}
-								)
-							.setTimestamp()
-							.setFooter({text: ''+ footertxt});
-						achan.send({ embeds: [aEmbed] }).then(auctionEmbed => {
-							dbSet(auctionEmbed.id, "0", 'N/A', reserve,'N/A'); //, startTime, endTime);
-						});
+									duration = msg.split(",")[1];
+									duration = duration.replace(/\s+/g, '');
+									duration = setLength(duration);
 			
-			// below code is for update intervals
+									processtime = duration.replace(/\s+/g, '');
+									if(processtime.includes('d')){
+										days = parseInt(processtime.split('d')[0]);
+										processtime = processtime.split('d')[1];
+									}
+										
+										if(processtime.includes('h')){
+											var str1 = processtime.split('h')[0];
+											hours = parseInt(processtime.split('h')[0]);
+											processtime = processtime.split('h')[1];
+										}
+										
+										if(processtime.includes('m')){
+											minutes = parseInt(processtime.split('m')[0]);
+										}
+									}
+									
+									if (typeof msg.split(",")[2] === 'undefined'){
+										reserve = '0';
+									} else{
+										reserve = msg.split(",")[2];
+										reserve = reserve.replace(/\s+/g, '');
+									}
+									seller = message.author.username;
+									sellerid = message.author;
+									message.delete();
+									
+						} */
 
-							var nextupdate;	
-							//message.reply('hours: ' + hoursleft + " & minutes: " + minsleft);
-							if (duration/1000 > 60){
-								nextupdate = duration % 60000 + 60000;
-							} else {
-								nextupdate = 30000;
-							}
-														
-				while(duration > 0 && killauction == false){
-								await sleep(nextupdate);
-								var dbchannel = await client.channels.cache.get(databasechannel);
-								var dbmsg = await dbchannel.messages.fetch(databasemsg);
-								let amsg = dbmsg.content;
-								
-								startmsg = amsg.split(',')[0];
-								highbid = amsg.split(',')[1];			// should this be pulled from database or left to global 
-								highbidder = amsg.split(',')[2];		// should this be pulled from database or left to global 
-								
-								let chan = await client.channels.cache.get(auctionchannel); 
-								let msgembed = await chan.messages.fetch(startmsg);
-								let updateEmbed = await msgembed.embeds[0];
-								
-								duration = duration - nextupdate;
-								if(duration >= 3*60000){ //more than 2 minutes
-									nextupdate = duration % 60000 + 60000;
-								} else if(duration > 69000){ //between 1 and 2 minutes
-									nextupdate = duration % 69000;
-								} else if(duration == 69000){
-									chan.send('69 SEX!!!');
-									nextupdate = 9000;
-								} else if(duration == 60000){
-									chan.send('1 MINIT LEFF!!!');
-									nextupdate = 15000;
-								}  else if(duration == 45000){
-									chan.send('45 SEX!!!');
-									nextupdate = 15000;
-								} else if (duration == 30000){
-									chan.send('30 SEX!!!');
-									nextupdate = 15000;
-								} else if (duration == 15000){
-									chan.send('15 SEX!!!');
-									nextupdate = 5000;
-								} else { //last 10 seconds
-									nextupdate = 1000;
+						let descript = randommsg('start');
+												
+						//initial message						
+							var authormsg = 'Åuction ╙isting ïnteractive Gangsta';
+							let iEmbed = new MessageEmbed()
+								.setColor(infocolor)
+								.setTitle('['+ auctiontext + ' STARTED]')
+								.setAuthor({name: authormsg})
+								.setDescription(descript)
+								.setThumbnail(botimg)
+								//.setFooter({text: 'SELLER: ' + seller });
+								let achan = await client.channels.cache.get(auctionchannel);
+								let introEmbed = achan.send({ embeds: [iEmbed] });
+							//save intro id and update embed color
+							
+							client.user.setStatus('dnd');
+							client.user.setActivity('bids (LIVE)', {type: 'LISTENING'});
+	
+						//eventually want to convert this to a true time check system instead of using delays
+							let auctionstart = new Date();
+							var startTime = auctionstart.getTime();
+							var minutesToAdd = (days * 24 * 60) + (hours * 60) + minutes;
+							let auctionend = new Date(startTime + minutesToAdd*60000);
+							duration = Math.ceil((auctionend - auctionstart)/1000)*1000;
+							var minsleft = Math.ceil(duration/(60*1000));
+							var hoursleft;
+							var daysleft;
+							if(minsleft >= 60){
+								hoursleft = Math.floor(minsleft/60);
+								if(hoursleft >= 24){
+									daysleft = Math.floor(hoursleft/24);
+									hoursleft = hoursleft % 24;
+								}else{
+									daysleft = 0;
 								}
-								hoursleft = Math.floor(duration /(60*60*1000));
-								minsleft = Math.floor((duration - (hoursleft*60*60*1000))/(60*1000)); 
+							}else{
+								hoursleft = 0;
+							}				
+							
+							minsleft = minsleft % 60;
+	
+							var timeleft = '';
+							if(daysleft > 4){
+								timeleft = daysleft + "d" + hoursleft + "h" + minsleft + "m";
+							} else{
+								hoursleft = daysleft * 24 + hoursleft;
 								if(hoursleft>0) {
 									timeleft = hoursleft + ":" + ('00'+minsleft).slice(-2);
 								} else if(minsleft>1){
 									timeleft = minsleft + " mins";
-								} else if(minsleft>0){
-									if(duration >59000){timeleft = minsleft + " min";
-									} else{
-										timeleft = "<1 min";
-									}
+								} else{
+									timeleft = minsleft + " min";
+								}							
+							}
+	
+							var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup';
+							var authormsg = 'NO BIDS YET';
+	
+							let aEmbed = new MessageEmbed()
+								.setColor(embedColor)							
+								.setTitle(title)
+								.setURL(nfturl)
+								.setAuthor({name: authormsg})
+								.setImage(imgurl)
+								.addFields(
+									{ name: 'TIME LEFT: ' + timeleft, value: 'RESERVE: ' + reserve + ' LRC', inline: true },
+									{ name: 'HIGH BIDDER', value: highbidder, inline: true}
+									)
+								.setFooter({text: ''+ footertxt});
+							achan.send({ embeds: [aEmbed] }).then(auctionEmbed => {
+								dbSet(auctionEmbed.id, "0", 'N/A', reserve,'N/A'); //, startTime, endTime);
+							});
+				
+				// below code is for update intervals
+	
+								var nextupdate;	
+								//message.reply('hours: ' + hoursleft + " & minutes: " + minsleft);
+								if (duration/1000 > 60){
+									nextupdate = duration % 60000 + 60000;
 								} else {
-									if(duration == 0){
-										dbmsg = await dbchannel.messages.fetch(databasemsg);
-										amsg = dbmsg.content;
-										var winningbid = amsg.split(',')[1];	// should this be pulled from database or left to global
-										reserve = amsg.split(',')[3];			// should this be pulled from database or left to global
-										var winningbidder;
-										var titlemsg;
-										var authormsg;
-										authormsg = 'Å╙ï-G [' + auctiontext + ' ENDED]';
-										authormsg = authormsg.split('').join(' ');
-										var endmsg = randommsg('end');
-										var endimage;
+									nextupdate = 30000;
+								}
+															
+					while(duration > 0 && killauction == false){
+									await sleep(nextupdate);
+									var dbchannel = await client.channels.cache.get(databasechannel);
+									var dbmsg = await dbchannel.messages.fetch(databasemsg);
+									let amsg = dbmsg.content;
+									
+									startmsg = amsg.split(',')[0];
+									highbid = amsg.split(',')[1];			// should this be pulled from database or left to global 
+									highbidder = amsg.split(',')[2];		// should this be pulled from database or left to global 
+									
+									let chan = await client.channels.cache.get(auctionchannel); 
+									let msgembed = await chan.messages.fetch(startmsg);
+									let updateEmbed = await msgembed.embeds[0];
+									
+									duration = duration - nextupdate;
+									if(duration >= 3*60000){ //more than 2 minutes
+										nextupdate = duration % 60000 + 60000;
+									} else if(duration > 69000){ //between 1 and 2 minutes
+										nextupdate = duration % 69000;
+									} else if(duration == 69000){
+										chan.send('69 SEX!!!');
+										nextupdate = 9000;
+									} else if(duration == 60000){
+										chan.send('1 MINIT LEFF!!!');
+										nextupdate = 15000;
+									}  else if(duration == 45000){
+										chan.send('45 SEX!!!');
+										nextupdate = 15000;
+									} else if (duration == 30000){
+										chan.send('30 SEX!!!');
+										nextupdate = 15000;
+									} else if (duration == 15000){
+										chan.send('15 SEX!!!');
+										nextupdate = 5000;
+									} else { //last 10 seconds
+										nextupdate = 1000;
+									}
+									hoursleft = Math.floor(duration /(60*60*1000));
+									minsleft = Math.floor((duration - (hoursleft*60*60*1000))/(60*1000)); 
+									if(hoursleft>0) {
+										timeleft = hoursleft + ":" + ('00'+minsleft).slice(-2);
+									} else if(minsleft>1){
+										timeleft = minsleft + " mins";
+									} else if(minsleft>0){
+										if(duration >59000){timeleft = minsleft + " min";
+										} else{
+											timeleft = "<1 min";
+										}
+									} else {
+										if(duration == 0){
+											dbmsg = await dbchannel.messages.fetch(databasemsg);
+											amsg = dbmsg.content;
+											var winningbid = amsg.split(',')[1];	// should this be pulled from database or left to global
+											reserve = amsg.split(',')[3];			// should this be pulled from database or left to global
+											var winningbidder;
+											var titlemsg;
+											var authormsg;
+											authormsg = 'Å╙ï-G [' + auctiontext + ' ENDED]';
+											authormsg = authormsg.split('').join(' ');
+											var endmsg = randommsg('end');
+											var endimage;
+											
+											updateEmbed.setColor(endcolor);
+											msgembed.edit(new MessageEmbed(updateEmbed));
+											msgembed.edit({embeds: [updateEmbed]});
+	
+											if (winningbid > 0){
+												winningbidder = amsg.split(',')[2];		// should this be pulled from database or left to global
+												titlemsg = 'HIGH BID = ' + winningbid + ' LRC';
+												titlemsg = titlemsg.split('').join(' ');
+												endimage = randommsg('imgend');
+												if(+winningbid < +reserve){
+													authormsg = '>>>RESERVE NOT MET (' + reserve + ' LRC)';
+													endmsg = "Well shit... we ain't git over dat reserve. I'll let you figz dis one out.";
+													endimage = 'https://i.gifer.com/76Gy.gif';
+												}
+	
+											} else{
+												winningbidder = 'Sum wak shiz! No bits';
+												titlemsg = 'NO BIDS, NO SALE';
+												titlemsg = titlemsg.split('').join(' ');
+												endmsg = 'The bid wasnt high, but Im gonna be...';
+												endimage = 'https://c.tenor.com/Dv1u3wqjGfIAAAAC/boring-bored.gif';
+											}
+											timeleft = "ENDED";
+																					
+											let eEmbed = new MessageEmbed()
+												.setColor(endcolor)
+												.setTitle(titlemsg)
+												.setAuthor({name: authormsg})
+												.setDescription(endmsg)
+												.setThumbnail(botimg)
+												.addFields(
+													{ name: 'SELLER', value: '<@' + sellerid + '>', inline: true },
+													{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
+												)
+												.setFooter({text: 'Report any issues/suggestions via DM to @BTCornBLAIQchnz'})
+											let endEmbed = await achan.send({ embeds: [eEmbed] });
+											
+											let endImg = await achan.send({files: [endimage]});
 										
-										updateEmbed.setColor(endcolor);
+										dbmsg.edit('NO CURRENT AUCTION');
+										client.user.setStatus('online');
+										client.user.setActivity('Fantasia', {type: 'WATCHING'});
+	
+										
+										} else{
+												timeleft = '<1 min';
+										}
+									}	
+										
+	
+										if(timeleft == "ENDED"){
+											updateEmbed.setColor(endcolor);
+											//iEmbed.setColor(endcolor);
+											//introEmbed.edit(new MessageEmbed(iEmbed));
+											//introEmbed.edit({embeds: [iEmbed]});
+										}
+										
+										updateEmbed.fields[0] = { name: 'TIME LEFT: ' + timeleft, value: 'RESERVE: ' + reserve + ' LRC', inline: true }
+										if(winningbid > 0){
+											authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
+											authormsg = authormsg.split('').join(' ');
+											updateEmbed.setAuthor({name: authormsg})
+											updateEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true}
+										}
+										
 										msgembed.edit(new MessageEmbed(updateEmbed));
 										msgembed.edit({embeds: [updateEmbed]});
-
-										if (winningbid > 0){
-											winningbidder = amsg.split(',')[2];		// should this be pulled from database or left to global
-											titlemsg = 'HIGH BID = ' + winningbid + ' LRC';
-											titlemsg = titlemsg.split('').join(' ');
-											endimage = randommsg('imgend');
-											if(+winningbid < +reserve){
-												authormsg = '>>>RESERVE NOT MET (' + reserve + ' LRC)';
-												endmsg = "Well shit... we ain't git over dat reserve. I'll let you figz dis one out.";
-												endimage = 'https://i.gifer.com/76Gy.gif';
-											}
-
-										} else{
-											winningbidder = 'Sum wak shiz! No bits';
-											titlemsg = 'NO BIDS, NO SALE';
-											titlemsg = titlemsg.split('').join(' ');
-											endmsg = 'The bid wasnt high, but Im gonna be...';
-											endimage = 'https://c.tenor.com/Dv1u3wqjGfIAAAAC/boring-bored.gif';
-										}
-										timeleft = "ENDED";
-																				
-										let eEmbed = new MessageEmbed()
-											.setColor(endcolor)
-											.setTitle(titlemsg)
-											.setAuthor({name: authormsg})
-											.setDescription(endmsg)
-											.setThumbnail(botimg)
-											.addFields(
-												{ name: 'SELLER', value: '<@' + sellerid + '>', inline: true },
-												{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
-											)
-											.setFooter({text: 'Report any issues/suggestions via DM to @BTCornBLAIQchnz'})
-										let endEmbed = await achan.send({ embeds: [eEmbed] });
+										updateEmbed.setThumbnail(imgurl);
+										updateEmbed.setImage();
+	
+						
 										
-										let endImg = await achan.send({files: [endimage]});
-									
-									dbmsg.edit('NO CURRENT AUCTION');
-									client.user.setStatus('online');
-									client.user.setActivity('Fantasia', {type: 'WATCHING'});
-
-									
-									} else{
-											timeleft = '<1 min';
-									}
-								}	
-									
-
-									if(timeleft == "ENDED"){
-										updateEmbed.setColor(endcolor);
-										//iEmbed.setColor(endcolor);
-										//introEmbed.edit(new MessageEmbed(iEmbed));
-										//introEmbed.edit({embeds: [iEmbed]});
-									}
-									
-									updateEmbed.fields[0] = { name: 'TIME LEFT: ' + timeleft, value: 'RESERVE: ' + reserve + ' LRC', inline: true }
-									if(winningbid > 0){
-										authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
-										authormsg = authormsg.split('').join(' ');
-										updateEmbed.setAuthor({name: authormsg})
-										updateEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true}
-									}
-									
-									msgembed.edit(new MessageEmbed(updateEmbed));
-									msgembed.edit({embeds: [updateEmbed]});
-									updateEmbed.setThumbnail(imgurl);
-									updateEmbed.setImage();
-
-					
-									
-					if(duration/1000 > 69 || duration/1000 == 60){
-							let dbchannel = await client.channels.cache.get(databasechannel);
-							let dbmsg = await dbchannel.messages.fetch(databasemsg);
-							let amsg = dbmsg.content;
-							var updatemsg = amsg.split(',')[4];
-							
-							if(updatemsg == 'N/A'){
-								await achan.send({ embeds: [updateEmbed] }).then(secondMessage => {
-								dbSet(undefined, undefined, undefined, undefined, secondMessage.id); //, startTime, endTime);
-								});
-							} else{
-								let chan = await client.channels.cache.get(auctionchannel); 
-								let messages = await chan.messages.fetch({limit: 1});
-								let lastMessage = messages.first();
-								let secondMessage = await chan.messages.fetch(updatemsg);
+						if(duration/1000 > 69 || duration/1000 == 60){
+								let dbchannel = await client.channels.cache.get(databasechannel);
+								let dbmsg = await dbchannel.messages.fetch(databasemsg);
+								let amsg = dbmsg.content;
+								var updatemsg = amsg.split(',')[4];
 								
-								if (lastMessage.id == secondMessage.id){															
-									secondMessage.edit(new MessageEmbed(updateEmbed));
-									secondMessage.edit({embeds: [updateEmbed]});
-								}else{
-									secondMessage.delete();
+								if(updatemsg == 'N/A'){
 									await achan.send({ embeds: [updateEmbed] }).then(secondMessage => {
 									dbSet(undefined, undefined, undefined, undefined, secondMessage.id); //, startTime, endTime);
 									});
+								} else{
+									let chan = await client.channels.cache.get(auctionchannel); 
+									let messages = await chan.messages.fetch({limit: 1});
+									let lastMessage = messages.first();
+									let secondMessage = await chan.messages.fetch(updatemsg);
+									
+									if (lastMessage.id == secondMessage.id){															
+										secondMessage.edit(new MessageEmbed(updateEmbed));
+										secondMessage.edit({embeds: [updateEmbed]});
+									}else{
+										secondMessage.delete();
+										await achan.send({ embeds: [updateEmbed] }).then(secondMessage => {
+										dbSet(undefined, undefined, undefined, undefined, secondMessage.id); //, startTime, endTime);
+										});
+									}
+								}
+						}
+						if(duration/1000 > 60){
+							if(Math.floor(Math.random() * 100) > 85){
+								const attachment = new MessageAttachment(imgurl);
+								let randomhype = '>>> ' + randommsg('hype');
+								if(Math.floor(Math.random() * 100) > 50){
+									achan.send({content: randomhype, files: [attachment]});
+								} else{
+									achan.send(randomhype);
 								}
 							}
-					}
-					if(duration/1000 > 60){
-						if(Math.floor(Math.random() * 100) > 85){
-							const attachment = new MessageAttachment(imgurl);
-							let randomhype = '>>> ' + randommsg('hype');
-							if(Math.floor(Math.random() * 100) > 50){
-								achan.send({content: randomhype, files: [attachment]});
-							} else{
-								achan.send(randomhype);
+						}
+	
+						if(duration/1000 == 10){									
+							achan.send(duration/1000 + '...  *(HIGH BID: ' + highbid + ' LRC)*');
+						} else{
+							if(duration/1000 < 10 && duration/1000 > 0){
+								achan.send(duration/1000 + '...  *(HIGH BID: ' + highbid + ' LRC)*');
 							}
 						}
-					}
+						
+						updateEmbed.setThumbnail();
+						updateEmbed.setImage(imgurl);
+					}		
 
-					if(duration/1000 == 10){									
-						achan.send(duration/1000 + '...  *(HIGH BID: ' + highbid + ' LRC)*');
-					} else{
-						if(duration/1000 < 10 && duration/1000 > 0){
-							achan.send(duration/1000 + '...  *(HIGH BID: ' + highbid + ' LRC)*');
-						}
-					}
-					
-					updateEmbed.setThumbnail();
-					updateEmbed.setImage(imgurl);
-				}		
-					killauction = false;
-			
 					nextauction = await getNextAuction();
-			
-		} while(!(nextauction == 'NO QUEUE'))
+					if(nextauction == 'NO QUEUE'){
+						console.log('queue empty');
+						await client.channels.cache.get(auctionchannel).send('any more out there? queue empty.');
+						startup = true;
+					}
+//		}
+		} while(killauction == false)
 		
-		console.log('queue empty');
-		await client.channels.cache.get(auctionchannel).send('any more out there? queue empty.');
 	})();
 		}						
 		}
