@@ -413,11 +413,6 @@ var formatTimezone = function formatTimezone(date) {
 //  FUNCTIONS  //
 /////////////////
 
-// retrieve last 100 messages from queue channel (doesn't seem to work the way i want)
-async function getqueuecache(){
-	await client.channels.cache.get(queuechannel).messages.fetch({limit: 100});
-}
-
 // scrape the nft link site to return title and image
 async function scrape(nfturl){
 	const browser = await puppeteer.launch({});
@@ -618,48 +613,72 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 }
 
 async function queuemsgcheck(){
+	console.log('loading up queue db message');
 	//load up queue db msg
 	var qupdated = false;
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	var dbmsg = await dbchannel.messages.fetch(queuemsg);
 	var qmsg = dbmsg.content;
-	var qopposite = qmsg;
+	var qopposite = '';
+	
+	if(!(qmsg == 'NO QUEUE')){
+		qopposite = qmsg;
+	}
 
+	console.log('loading up queue channel');
 	//load up queue channel
 	var qchannel = await client.channels.cache.get(queuechannel);
 	//queueitem = await qchannel.messages.fetch({limit: 100});
 	
+	console.log('processing fetched messages');
 	//process all fetched messages
-	qchannel.messages.fetch().then(messages => {
+	await qchannel.messages.fetch().then(messages => {
 		messages.forEach(msg => {
-			if(!qmsg == 'NO QUEUE'){
+
+			// if qmsg isn't NO QUEUE, remove any found message ids while processing
+			// this will result in helping find any ids that are in qmsg that don't exist
+			if(!(qmsg == 'NO QUEUE')){
 				//find any message id's that are in qmsg, but shouldn't be
 				if(qopposite.includes(msg.id)){
 					qopposite = qopposite.replace(msg.id,'').replace(',,',',');
 					if(qopposite.charAt(0) == ','){qopposite.slice(1)}
 					if(qopposite.charAt(qopposite.length) == ','){qopposite.slice(0,-1)}
+					var endsWithNum = false;
+					do{
+						endsWithNum = isNaN(qopposite.slice(-1)) ? false : true;
+						if(!(endsWithNum)){
+							qopposite = qopposite.slice(0,-1);
+							console.log('trimmed last character from qmsg: ' + qmsg);
+						}
+					}while(!(endsWithNum) && (qopposite.length > 0))
 				}
-			}else{
-				qopposite = '';
 			}
 
 			//find any message id's that are NOT in qmsg, but should be (add missing ones to qmsg)
+			console.log('processing message: ' + msg.id);
 			if(!(qmsg.includes(msg.id))){
+				// if it finds a msg.id not in qmsg, check if it has an embed.
+				console.log('message not in queue, checking for embed.')
 				if (msg.embeds[0]){
+					console.log('embed found. adding to qmsg.');
+					console.log('qmsg content before: ' + qmsg);
 					if(qmsg == 'NO QUEUE'){
 						qmsg = msg.id;
 					}else{
 						qmsg = qmsg + ',' + msg.id;
 					}
-					qupdate = true;
+					console.log('qmsg content after: ' + qmsg);
+					qupdated = true;
+				}else{
+					console.log('no embed found, skipping message.');
 				};
 			}
 		});
 	  });
 
-	// once all messages are processed, check if qmsg contains any that weren't found... if so, remove them
+	  // once all messages are processed, check if qmsg contains any that weren't found... if so, remove them
 	if(qopposite.length > 0){
-		//console.log(qopposite);
+		console.log('qmsg contains message id not in queue channel, removing the following: ' + qopposite);
 		qmsg.replace(qopposite,'').replace(',,',',');
 		if(qmsg.charAt(0) == ','){qmsg.slice(1)}
 		if(qmsg.charAt(qmsg.length) == ','){qmsg.slice(0,-1)}
@@ -668,7 +687,8 @@ async function queuemsgcheck(){
 
 	//if qmsg needs updated, update message
 	  if(qupdated){
-		  dbmsg.edit(qmsg);
+		  console.log('updating qmsg entry to: ' + qmsg);
+		  await dbmsg.edit(qmsg);
 	  }
 }
 
@@ -695,15 +715,17 @@ const asyncSome = async (arr, predicate) => {
 
 // grab details for next auction
 async function getNextAuction() {
-	//validate queue message entries and update if needed
-	//console.log('Validating Queue Message');
-	queuemsgcheck();
+	
 
 	//need to do a check to see if an auction has started since this getNextAuction cycle was started.
 	//if so... abort process.
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	//console.log('Getting Next Auction Details');
 	do{
+		//validate queue message entries and update if needed
+		//console.log('Validating Queue Message');
+		await queuemsgcheck();
+
 //		var auctionmsg = await dbchannel.messages.fetch(databasemsg);
 //		var amsg = auctionmsg.content;
 //		if(!(amsg == 'NO CURRENT AUCTION')){
@@ -759,11 +781,21 @@ async function getNextAuction() {
 					console.log('removing item: ' + i);
 					console.log('qmsg: ' + qmsg)
 					qmsg = qmsg.replace(/\s+/g, '');
+					var endsWithNum = false;
+					do{
+						endsWithNum = isNaN(qmsg.slice(-1)) ? false : true;
+						if(!(endsWithNum)){
+							qmsg = qmsg.slice(0,-1);
+							console.log('trimmed last character from qmsg: ' + qmsg);
+						}
+					}while(endsWithNum)
 
 					if(qmsg == i){
+						console.log('qmsg removing via method 1');
 						qmsg = 'NO QUEUE';
 						await dbmsg.edit(qmsg);
 					}else{
+						console.log('qmsg removing via method 2');
 						qmsg = qmsg.replace(i,'').replace(',,',',').replace(', ','');
 						if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
 						if(qmsg.charAt(qmsg.length) == ' '){
@@ -809,7 +841,11 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	
 	// add these when ready to go live //
 	dbmsg.edit(qmsg);
-	queueitem.delete();
+	try{
+		queueitem.delete();
+	}catch{
+		console.log('message already deleted: encountered in getNextAuction');
+	}
 	
 	let auctiondetails = qseller + ', ' + qduration + ', ' + qreserve + ', ' + qimage + ', ' + qtitle + ', ' + qurl;
 	
@@ -1028,7 +1064,8 @@ if(!startup){
 
 	if(msg.includes('!queue') || msg.includes('!auction')){
 		var addedtoqueue = queueAdd(message);
-		if(addedtoqueue){message.delete();}
+		try{if(addedtoqueue){message.delete();}}
+		catch{console.log('message already deleted.');}
 	}
 
 } else{
