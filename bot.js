@@ -5,22 +5,21 @@
 const {Client, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
 const puppeteer = require('puppeteer');
 const moment = require('moment');
+const auth = require('./auth.json');
 
 const client = new Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.GUILD_PRESENCES],
 	partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
-const auth = require('./auth.json');
 
 client.once('ready', () =>{
 	console.log('Connected!')
 	client.user.setStatus('online');
 	client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
-	ClearDatabase();
+	ClearDatabase(); //clear current auction message and start listener
 })
 
 client.on('error', console.log)
-
 client.login(auth.token)
 
 /////////////////
@@ -417,31 +416,57 @@ var formatTimezone = function formatTimezone(date) {
 async function scrape(nfturl){
 	const browser = await puppeteer.launch({});
 	const page = await browser.newPage();
-	
+	console.log(nfturl);
 	await page.goto(nfturl);
 	var IMAGE_SELECTOR;
+	var TITLE_SELECTOR;
+	var getTitle;
+	var imageTitle;
+	var hasPlaceholder;
 	var placeholder;
 	var gotimage = false
 	
 	if(nfturl.includes('explorer.loopring.io')){
-	IMAGE_SELECTOR = '#__next > main > div > div.pt-12 > div > div > img';
-	placeholder = 'nft-placeholder.svg';
+		console.log('explorer.loopring.io');
+		IMAGE_SELECTOR = '#__next > main > div > div.pt-12 > div > div > img';
+		TITLE_SELECTOR = IMAGE_SELECTOR;
+		placeholder = 'nft-placeholder.svg';
+		hasPlaceholder = true;
+	}else if(nfturl.includes('lexplorer.io')){
+		console.log('lexplorer.io');
+		IMAGE_SELECTOR = '.nft'; //'body > div.mud-layout.mud-drawer-open-responsive-lg-left.mud-drawer-left-clipped-docked > div > div > div.mud-table.mud-simple-table.mud-table-dense.mud-table-bordered.mud-table-striped.mud-elevation-1 > div > table > tbody > tr:nth-child(10) > td > img';
+		TITLE_SELECTOR = 'tr:nth-child(1) > td > div > h6'; //"[class='mud-typography mud-typography-h6 mud-inherit-text']";
+		hasPlaceholder = false;
 	}else{
-		return 'only set up for explorer.loopring.io right now';
+		return 'only set up for explorer.loopring.io and lexplorer.io';
 	}
    
+	if(hasPlaceholder){getTitle = false;
+	}else{getTitle = true;}
+
 	while(gotimage == false){
+		console.log('finding image');
 		await page.waitForTimeout(3000);
 		var imageHref = await page.evaluate((sel) => {
 			return document.querySelector(sel).getAttribute('src');
 		}, IMAGE_SELECTOR);
-				
-		if(!(imageHref.includes(placeholder))){
+		
+		console.log('processing...');
+
+		if(hasPlaceholder){
+			if(!(imageHref.includes(placeholder))){getTitle = true;}
+		}else{getTitle = true;}
+
+		if(getTitle){
+			console.log('getting title...');
 			gotimage = true;
-			var imageTitle = await page.evaluate((sel) => {
-			return document.querySelector(sel).getAttribute('alt');
-		}, IMAGE_SELECTOR);
-		 
+			if(nfturl.includes('explorer.loopring.io')){
+				imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
+				console.log(imageTitle);
+			}else{
+				imageTitle = await page.$eval(TITLE_SELECTOR, el => el.textContent);   //uate((sel) => {return document.querySelector(sel).getProperty('textContent');}, TITLE_SELECTOR)).jsonValue();
+				console.log(imageTitle);
+			}
 		} else{
 			await page.waitForTimeout(1000);
 		}
@@ -453,6 +478,8 @@ async function scrape(nfturl){
 
 //add item to queue
 async function queueAdd(message){
+// adding in attachment check
+
 	try{
 		var msg = message.content.toLowerCase();
 		var dbchannel = await client.channels.cache.get(databasechannel);
@@ -469,11 +496,39 @@ async function queueAdd(message){
 		
 		if (!(isValidURL(arr[0]))){
 			message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
-			throw 'Parameter is not a valid url!';}
+			throw 'Parameter is not a valid url!';
+		}
 		
 		var details = await scrape(arr[0]);
+		if(details == 'only set up for explorer.loopring.io and lexplorer.io'){
+			message.replay(details);
+			throw details;
+		}
 		var qTitle = details.split(',')[0];
-		var qImg = details.split(',')[1];
+
+		if(message.type === 'REPLY'){
+			await message.fetchReference().then(repliedTo =>{
+					if(repliedTo.attachments.size > 0){
+						qImg = repliedTo.attachments.first().url;	
+						console.log(qImg + " from reply attachement");	//if image is in replied message (convert to being in same message)
+					}else{
+						qImg = details.split(',')[1];
+						console.log(qImg + " from scrape");
+					}
+				}).catch (err =>{
+					console.log(err);
+					qImg = details.split(',')[1];
+				});
+			}else{
+				if(message.attachments.size >0){
+					qImg = message.attachments.first().url;
+					console.log(qImg + " from attachment");
+				} else{
+					qImg = details.split(',')[1];
+					console.log(qImg + " from scrape");
+				}
+			}
+
 		qImg = encodeURI(qImg);
 
 		var qduration = setLength(arr[1]);
@@ -532,13 +587,13 @@ async function queueAdd(message){
 }
 
 
-// clear auction message in database 
+// clear current auction message in database 
 async function ClearDatabase(){
-	let dbchannel = await client.channels.cache.get(databasechannel);
-	let dbmsg = await dbchannel.messages.fetch(databasemsg);
-	await dbmsg.edit('NO CURRENT AUCTION');
-	await client.channels.cache.get(queuechannel).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
-}
+		let dbchannel = await client.channels.cache.get(databasechannel);
+		let dbmsg = await dbchannel.messages.fetch(databasemsg);
+		await dbmsg.edit('NO CURRENT AUCTION');
+		await client.channels.cache.get(queuechannel).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+	}
 
 // process database message
 function dbCurrent(str, delimiter = ",") {
@@ -692,6 +747,7 @@ async function queuemsgcheck(){
 	  }
 }
 
+//no longer used
 function processDateFormat(str){
 	let monthlookup = str.split(' ')[0].replace(/\s+/g, '');
 	let month = monthAbbrev[monthlookup] ? monthAbbrev[monthlookup] : monthlookup;
@@ -754,21 +810,11 @@ async function getNextAuction() {
 				queueitem = await qchannel.messages.fetch(i+'');
 				qembed = await queueitem.embeds[0];
 
-				//qseller = field[0].value;
-				//qduration = field[1].name;
-				//qreserve = field[1].value;
-				//console.log('timestamp: ' + qembed.timestamp);
-
 				if(qembed.timestamp == null){
 					itemselected = i;
 					return true;}
-				//let dateArray = new Array();
-				//dateArray = processDateFormat(qembed.fields[3].value).split(',');
 				let now = moment();
 
-				//currently limit to only adding days, hours, minutes
-				//let qnotbefore = moment.utc([now.year(),dateArray[0],dateArray[1],dateArray[2],dateArray[3]]);
-				//console.log('now = ' + now + ' and not before = ' + qnotbefore);
 				if(now.isSameOrAfter(qembed.timestamp)){
 					itemselected = i;
 					return true;
@@ -842,6 +888,7 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	// add these when ready to go live //
 	dbmsg.edit(qmsg);
 	try{
+		console.log('deleting queueitem');
 		queueitem.delete();
 	}catch{
 		console.log('message already deleted: encountered in getNextAuction');
@@ -945,7 +992,8 @@ var startup = false;
 
 	// ALI-G STARTUP
 	if(message.author == alig && message.content.includes('Iz awkshun time!')){
-		message.delete();
+		console.log('deleting startup message');
+		await message.delete();
 		startup = true;
 	}else{
 		// check if the author is a bot and quit if so (unless in the queuechannel ==> for triggering the initial cache)	
@@ -1175,26 +1223,7 @@ if(!startup){
 								scrapetext = await scrape(nfturl);
 								title = scrapetext.split(',')[0];
 								
-								if(message.type === 'REPLY'){
-								await message.fetchReference().then(repliedTo =>{
-										if(repliedTo.attachments.size > 0){
-											imgurl = repliedTo.attachments.first().url;		//if image is in replied message (convert to being in same message)
-										}else{
-											imgurl = scrapetext.split(',')[1];
-										}
-									}).catch (err =>{
-										console.log(err);
-										imgurl = scrapetext.split(',')[1];
-									});
-								}else{
-									if(message.attachments.size >0){
-										imgurl = message.attachments.first().url;
-									} else{
-										imgurl = scrapetext.split(',')[1];
-									}
-								}
-		
-								imgurl = encodeURI(imgurl);
+								
 	
 								if (typeof msg.split(",")[1] === 'undefined'){
 									duration = '5 min';
