@@ -34,20 +34,37 @@ const auctiontest = '976917431471710289';		// auction test channel
 const queuechannel = '978340918061039656';		// queue channel
 const databasechannel = '975829186063237140'; 	// database channel
 
+
+//ROLES
 const puzzlegang = '970758538681012315';		// puzzlegang role
 const kernalcommander = '970723355097444482';	// kernalcommander role
 const wingman = '970760443113111582';			// wingman role
-const booyakasha = '976887843915964447';		// booyakasha role
+
+/*initial thoughts on role limitations
+Ali A - 3 auctions postings per day, 5 min max duration (max scheduling out 4 hours)
+Ali B - 5 auctions postings per day, 5 min max duration (max scheduling out 8 hours)
+Ali C - 7 auctions postings per day, 5 min max duration (max scheduling out 24 hours)
+Ali D - 10 auctions postings per day, 5 min max duration (max scheduling out 48 hours) 
+Ali E - special *E*vent limited access auctions (bidder special role only)
+Ali F - Creators (no limitations on number of auctions or delay, duration max = 15 min)
+*/
+const aliA = '980663524361658488';				// auction role
+const aliB = '980661146887536700';				// auction role
+const aliC = '980663646453649468';				// auction role
+const aliD = '980663669476196392';				// auction role
+const aliE = '979840380851879996';				// for special Events
+const aliF = '976887843915964447';				// creators auction role
 
 const databasemsg = '975836495606849686'; 		// database message
 const prizemsg = '977234646578376724'; 			// prize message
 const queuemsg = '978341660507389952';			// queue message
+const limitmsg = '980668627030278194';			// limit message for monitoring post amounts
 
 const livecolor = '#00ab66';					// embed color when live
 const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
 const isLive = false;							// true = live; false = maintenance
-
+const isSpecialEvent = false;					// special event trigger
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
 
@@ -475,6 +492,93 @@ async function scrape(nfturl){
 	return imageTitle + ',' + imageHref;
 }
 
+async function limitCheck(message, qduration, qdelay){
+	//used to check number of auction postings in 24 hr period
+
+	var dbchannel = await client.channels.cache.get(databasechannel);
+	var dbmsg = await dbchannel.messages.fetch(limitmsg);
+	let lmsg = dbmsg.content;
+/*
+change to this when we get more busy
+	var limitCount = 3;		// default to Ali A role (max 3 auctions per day)
+	var maxduration = 5;	// default to Ali A role (5 min max duration)
+	var maxdelay = 4;		// default to Ali A role (max scheduling out 4 hours) 
+*/
+
+//temporary default to promote usage
+	var limitCount = 10;	// default to Ali D role (max 7 auctions per day)
+	var maxduration = 5;	// default to Ali D role (5 min max duration)
+	var maxdelay = 24;		// default to Ali D role (max scheduling out 24 hours) 
+	
+	//find user's auction limit (uncomment B and C when we get more busy)
+	//if(message.member.roles.cache.has(aliB)){limitCount = 5;maxdelay = 8;}
+	//if(message.member.roles.cache.has(aliC)){limitCount = 7;maxdelay = 24;}
+	if(message.member.roles.cache.has(aliD)){limitCount = 10;maxdelay = 48;}
+	//Ali E for special events only
+	if(message.member.roles.cache.has(aliF)){limitCount = 741;maxduration = 15;maxdelay = 48;}	
+
+//check auction limit first
+	if(lmsg.includes(message.author.id)){
+		let lmsgArray = new Array();
+		lmsgArray = lmsg.split(message.author.id);
+		var currNum;
+		var startofstr = '';
+		if(lmsgArray[0].includes(',')){
+			currNum = lmsgArray[0].slice(lmsgArray[0].lastIndexOf(','),-1);
+			startofstr = lmsgArray[0].slice(0,-(text.length-lmsgArray[0].lastIndexOf(',')));
+		}else{
+			currNum = parseInt(lmsgArray[0].slice(0,-1));
+			console.log('currNum:' + currNum );
+		}
+		if(currNum + 1 > limitCount){
+			return '[LIMIT REACHED] 24 hour auction limit: ' + limitCount;
+		}else{
+			currNum = +currNum + 1;
+			if(startofstr == ''){
+				lmsg = currNum + ':' + message.author.id + lmsgArray[1];
+			}else{
+				lmsg = startofstr + ',' + currNum + ':' + message.author.id + lmsgArray[1];
+			}
+			console.log(lmsg);
+		}
+	}else{
+		if(lmsg = 'LIMIT RESET'){
+			lmsg = '1:' + message.author.id; 
+		}else{
+			lmsg = lmsg + ',1:' + message.author.id;
+		}
+	}
+
+//!queue <nftlink>, <duration>, <reserve>, <delay>
+//check maxduration
+	var days = qduration.split('d')[0];
+	var inputduration = qduration.split('d')[1];
+	var hours = inputduration.split('h')[0];
+	var minutes = inputduration.split('h')[1].replace('m','').replace(/\s+/g,'');
+	if((+days > 0) || (+hours  > 0) || (+minutes > +maxduration)){
+		console.log(minutes + ' vs ' + maxduration);
+		await message.reply('duration set to your max: ' + maxduration + 'm');
+		console.log('user tried to run an auction with a duration of: ' + qduration);
+		qduration = '0d 0h ' + maxduration + 'm';
+	}
+
+//check maxdelay
+if(!(qdelay == 'N/A')){
+		if(qdelay > maxdelay){
+			await message.reply('schedule exceeded limits, set delay to #hrs: ' + maxdelay);
+			console.log('user tried to schedule an auction in #hrs = ' + qdelay);
+			qdelay = maxdelay;
+		}
+}
+
+var inputs = qduration + ',' + qdelay;
+dbchannel = await client.channels.cache.get(databasechannel);
+dbmsg = await dbchannel.messages.fetch(limitmsg);
+await dbmsg.edit(lmsg);
+return inputs;
+
+}
+
 
 //add item to queue
 async function queueAdd(message){
@@ -510,7 +614,7 @@ async function queueAdd(message){
 			await message.fetchReference().then(repliedTo =>{
 					if(repliedTo.attachments.size > 0){
 						qImg = repliedTo.attachments.first().url;	
-						console.log(qImg + " from reply attachement");	//if image is in replied message (convert to being in same message)
+						console.log(qImg + " from reply attachment");	//if image is in replied message (convert to being in same message)
 					}else{
 						qImg = details.split(',')[1];
 						console.log(qImg + " from scrape");
@@ -536,16 +640,25 @@ async function queueAdd(message){
 		if (!(typeof arr[2] === 'undefined')){qreserve = arr[2];}
 		var qdelay = 'N/A';
 		if (!(typeof arr[3] === 'undefined')){qdelay = arr[3];}
-		if(!(qdelay == 'N/A')){
 
-			if(qdelay > 48){
-				message.reply('Yo, check it! me set dat delay to 48 hrs. Dat be me current max delay.');
-				qdelay = 48;
-			}
+		var limiters = await limitCheck(message, qduration, qdelay);
+		if(limiters.includes('[LIMIT REACHED]')){
+			message.reply(limiters);
+			throw limiters;
+		}
+		console.log(limiters);
+		console.log(qduration + ' vs. limit: ' + limiters.split(',')[0]);
+		qduration = limiters.split(',')[0];
+		console.log(qdelay + ' vs. limit: ' + limiters.split(',')[1]);
+		qdelay = limiters.split(',')[1];
+
+		if(!(qdelay == 'N/A')){
 			var date = new Date();
 			date = date.getTime() + (qdelay*60*60*1000);
 			qdelay = dateFormat(date, "UTC:mmm d h:MM TT Z"); 
 		}
+
+
 
 			let qEmbed = new MessageEmbed()
 				.setColor(infocolor)
@@ -594,6 +707,19 @@ async function ClearDatabase(){
 		await dbmsg.edit('NO CURRENT AUCTION');
 		await client.channels.cache.get(queuechannel).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
 	}
+
+async function clearLimitMsg(){
+		let dbchannel = await client.channels.cache.get(databasechannel);
+		let dbmsg = await dbchannel.messages.fetch(limitmsg);
+		await dbmsg.edit('LIMIT RESET');
+}
+
+async function clearQueueMsg(){
+	let dbchannel = await client.channels.cache.get(databasechannel);
+	let dbmsg = await dbchannel.messages.fetch(queuemsg);
+	await dbmsg.edit('NO QUEUE');
+}
+
 
 // process database message
 function dbCurrent(str, delimiter = ",") {
@@ -703,7 +829,6 @@ async function queuemsgcheck(){
 						endsWithNum = isNaN(qopposite.slice(-1)) ? false : true;
 						if(!(endsWithNum)){
 							qopposite = qopposite.slice(0,-1);
-							console.log('trimmed last character from qmsg: ' + qmsg);
 						}
 					}while(!(endsWithNum) && (qopposite.length > 0))
 				}
@@ -734,14 +859,15 @@ async function queuemsgcheck(){
 	  // once all messages are processed, check if qmsg contains any that weren't found... if so, remove them
 	if(qopposite.length > 0){
 		console.log('qmsg contains message id not in queue channel, removing the following: ' + qopposite);
-		qmsg.replace(qopposite,'').replace(',,',',');
-		if(qmsg.charAt(0) == ','){qmsg.slice(1)}
-		if(qmsg.charAt(qmsg.length) == ','){qmsg.slice(0,-1)}
+		qmsg = qmsg.replace(qopposite,'').replace(',,',',');
+		if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1)}
+		if(qmsg.charAt(qmsg.length) == ','){qmsg = qmsg.slice(0,-1)}
 		qupdated = true;
 	}
 
 	//if qmsg needs updated, update message
 	  if(qupdated){
+		  if(qmsg.length = 0){qmsg = 'NO QUEUE';}
 		  console.log('updating qmsg entry to: ' + qmsg);
 		  await dbmsg.edit(qmsg);
 	  }
@@ -857,7 +983,13 @@ async function getNextAuction() {
 		});
 
 		if(itemselected == 'N/A'){
+			var daybefore = moment.utc().dayOfYear();
 			await sleep(15000); //wait 15 seconds 
+			var dayafter = moment.utc().dayOfYear();
+			if(!(daybefore == dayafter)){
+				clearLimitMsg();
+				console.log('NEW DAY: Limits Reset!');
+			}
 			console.log('Listening for new queue items...');
 		}
 
@@ -886,13 +1018,8 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	let qurl = await qembed.url;
 	
 	// add these when ready to go live //
-	dbmsg.edit(qmsg);
-	try{
-		console.log('deleting queueitem');
-		queueitem.delete();
-	}catch{
-		console.log('message already deleted: encountered in getNextAuction');
-	}
+	await dbmsg.edit(qmsg);
+	await queueitem.delete();
 	
 	let auctiondetails = qseller + ', ' + qduration + ', ' + qreserve + ', ' + qimage + ', ' + qtitle + ', ' + qurl;
 	
@@ -1011,7 +1138,7 @@ else{ embedColor = infocolor; auctiontext = 'FAKE AUCTION';}
 
 if(!startup){
 	// check if member has the necessary role for using commands
-	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){	
+	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){	
 		if(message.author.id == bitcorn){
 			// create a new database entry
 			if(msg.includes('!createmsg')){
@@ -1030,6 +1157,12 @@ if(!startup){
 				var dbmsg = await dbchannel.messages.fetch(prizemsg);
 				let pmsg = dbmsg.content;
 				message.reply(pmsg.split(',').length + '/42');
+			}
+
+			if(msg.includes('!reset')){
+				await clearLimitMsg();
+				await ClearDatabase();
+				await clearQueueMsg();
 			}
 
 			//scrape information from website
@@ -1112,14 +1245,13 @@ if(!startup){
 
 	if(msg.includes('!queue') || msg.includes('!auction')){
 		var addedtoqueue = queueAdd(message);
-		try{if(addedtoqueue){message.delete();}}
-		catch{console.log('message already deleted.');}
+		if(addedtoqueue){message.react('976603681850003486');}
 	}
 
 } else{
 
 	// limit these functions to approved auction roles				
-	if( startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(booyakasha)){
+	if( startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){
 			// kill function (limit to admin only)
 			if(msg == 'kill'){
 				if(message.member.roles.cache.has(puzzlegang) || message.member.roles.cache.has(kernalcommander)){
@@ -1176,7 +1308,16 @@ if(!startup){
 									//}
 									//console.log(nextauction);
 									console.log('last queue ping: ' + Date.now());
-									if(nextauction == 'NO QUEUE'){await sleep(15000);}
+									
+									if(nextauction == 'NO QUEUE'){
+										var daybefore = moment.utc().dayOfYear();
+										await sleep(15000); //wait 15 seconds 
+										var dayafter = moment.utc().dayOfYear();
+										if(!(daybefore == dayafter)){
+											clearLimitMsg();
+											console.log('NEW DAY: Limits Reset!');
+										}
+									}
 									//}
 									//else{
 									//console.log('encountered live auction, aborting secondary process.');
@@ -1213,55 +1354,7 @@ if(!startup){
 	
 							killauction = false;			// KILL AUCTION TRIGGER
 
-							/* else{
-							nfturl = msg.split(",")[0];
-						
-							if (!(isValidURL(nfturl))){
-								message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
-								throw 'Parameter is not a valid url!';
-							}
-								scrapetext = await scrape(nfturl);
-								title = scrapetext.split(',')[0];
-								
-								
-	
-								if (typeof msg.split(",")[1] === 'undefined'){
-									duration = '5 min';
-								} else{
-									duration = msg.split(",")[1];
-									duration = duration.replace(/\s+/g, '');
-									duration = setLength(duration);
-			
-									processtime = duration.replace(/\s+/g, '');
-									if(processtime.includes('d')){
-										days = parseInt(processtime.split('d')[0]);
-										processtime = processtime.split('d')[1];
-									}
-										
-										if(processtime.includes('h')){
-											var str1 = processtime.split('h')[0];
-											hours = parseInt(processtime.split('h')[0]);
-											processtime = processtime.split('h')[1];
-										}
-										
-										if(processtime.includes('m')){
-											minutes = parseInt(processtime.split('m')[0]);
-										}
-									}
-									
-									if (typeof msg.split(",")[2] === 'undefined'){
-										reserve = '0';
-									} else{
-										reserve = msg.split(",")[2];
-										reserve = reserve.replace(/\s+/g, '');
-									}
-									seller = message.author.username;
-									sellerid = message.author;
-									message.delete();
-									
-						} */
-
-						let descript = randommsg('start');
+							let descript = randommsg('start');
 												
 						//initial message						
 							var authormsg = 'Åuction ╙isting ïnteractive Gangsta';
@@ -1581,12 +1674,17 @@ if(!startup){
 						message.author.send("Yo, u iz haz dem DMs closed or sumthin. I iz out tho.");
 					});
 				}else{
-					message.delete();
+					await message.delete();
 				}
 			}
 		}
 
+
 		if(msg.includes('!bid') || msg.includes('!bit') || msg.includes('!biddup') || msg.includes('!override')){
+			var userCanBid = true;
+			if(isSpecialEvent && !(message.member.roles.cache.has(aliE))){userCanBid = false;}
+			
+			if(userCanBid){
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(databasemsg);
 				let amsg = dbmsg.content;
@@ -1741,7 +1839,14 @@ if(!startup){
 					message.reply('No current awkshun, so whatcha bittin on?');
 				}
 
+			}else{
+				console.log('ineligible bidder: special event');
+				let sorrybra = await message.reply('Sorry bra, dis iz a limited access event.');
+				await message.delete();
+				await sleep(2000);
+				await sorrybra.delete();
 			}	
+		}
 	} catch(err){
 		console.log(err);
 	}		
