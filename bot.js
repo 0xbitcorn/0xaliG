@@ -16,6 +16,7 @@ client.once('ready', () =>{
 	console.log('Connected!')
 	client.user.setStatus('online');
 	client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
+	clearQueueMsg(); //clear current queue message (will repopulate)
 	ClearDatabase(); //clear current auction message and start listener
 })
 
@@ -65,12 +66,16 @@ const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
 const isLive = false;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
+const dmAlertTime = 15;							// number of minutes before auction to start trying to send alerts 
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
 
 
 // bot avatar
 const botimg = 'https://cdn.discordapp.com/attachments/962059766937567254/974343468350603274/aliG_1.png';
+
+// bot starting soon image
+const soonImg = 'https://cdn.discordapp.com/attachments/962059766937567254/981044944187834439/STARTINGSOON.gif';
 
 // bot start messages
 const auction_start=[
@@ -431,6 +436,7 @@ var formatTimezone = function formatTimezone(date) {
 
 // scrape the nft link site to return title and image
 async function scrape(nfturl){
+	console.log('New Queue Item added');
 	const browser = await puppeteer.launch({});
 	const page = await browser.newPage();
 	console.log(nfturl);
@@ -444,13 +450,13 @@ async function scrape(nfturl){
 	var gotimage = false
 	
 	if(nfturl.includes('explorer.loopring.io')){
-		console.log('explorer.loopring.io');
+		//console.log('explorer.loopring.io');
 		IMAGE_SELECTOR = '#__next > main > div > div.pt-12 > div > div > img';
 		TITLE_SELECTOR = IMAGE_SELECTOR;
 		placeholder = 'nft-placeholder.svg';
 		hasPlaceholder = true;
 	}else if(nfturl.includes('lexplorer.io')){
-		console.log('lexplorer.io');
+		//console.log('lexplorer.io');
 		IMAGE_SELECTOR = '.nft'; //'body > div.mud-layout.mud-drawer-open-responsive-lg-left.mud-drawer-left-clipped-docked > div > div > div.mud-table.mud-simple-table.mud-table-dense.mud-table-bordered.mud-table-striped.mud-elevation-1 > div > table > tbody > tr:nth-child(10) > td > img';
 		TITLE_SELECTOR = 'tr:nth-child(1) > td > div > h6'; //"[class='mud-typography mud-typography-h6 mud-inherit-text']";
 		hasPlaceholder = false;
@@ -462,27 +468,23 @@ async function scrape(nfturl){
 	}else{getTitle = true;}
 
 	while(gotimage == false){
-		console.log('finding image');
+		console.log('Finding Image...');
 		await page.waitForTimeout(3000);
 		var imageHref = await page.evaluate((sel) => {
 			return document.querySelector(sel).getAttribute('src');
 		}, IMAGE_SELECTOR);
-		
-		console.log('processing...');
 
 		if(hasPlaceholder){
 			if(!(imageHref.includes(placeholder))){getTitle = true;}
 		}else{getTitle = true;}
 
 		if(getTitle){
-			console.log('getting title...');
+			console.log('Getting Title...');
 			gotimage = true;
 			if(nfturl.includes('explorer.loopring.io')){
 				imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
-				console.log(imageTitle);
 			}else{
 				imageTitle = await page.$eval(TITLE_SELECTOR, el => el.textContent);   //uate((sel) => {return document.querySelector(sel).getProperty('textContent');}, TITLE_SELECTOR)).jsonValue();
-				console.log(imageTitle);
 			}
 		} else{
 			await page.waitForTimeout(1000);
@@ -528,7 +530,7 @@ change to this when we get more busy
 			startofstr = lmsgArray[0].slice(0,-(text.length-lmsgArray[0].lastIndexOf(',')));
 		}else{
 			currNum = parseInt(lmsgArray[0].slice(0,-1));
-			console.log('currNum:' + currNum );
+			//console.log('currNum:' + currNum );
 		}
 		if(currNum + 1 > limitCount){
 			return '[LIMIT REACHED] 24 hour auction limit: ' + limitCount;
@@ -556,9 +558,8 @@ change to this when we get more busy
 	var hours = inputduration.split('h')[0];
 	var minutes = inputduration.split('h')[1].replace('m','').replace(/\s+/g,'');
 	if((+days > 0) || (+hours  > 0) || (+minutes > +maxduration)){
-		console.log(minutes + ' vs ' + maxduration);
 		await message.reply('duration set to your max: ' + maxduration + 'm');
-		console.log('user tried to run an auction with a duration of: ' + qduration);
+		console.log('user tried to run an auction with a duration of: ' + qduration + '(max = ' + maxduration + ')');
 		qduration = '0d 0h ' + maxduration + 'm';
 	}
 
@@ -614,10 +615,10 @@ async function queueAdd(message){
 			await message.fetchReference().then(repliedTo =>{
 					if(repliedTo.attachments.size > 0){
 						qImg = repliedTo.attachments.first().url;	
-						console.log(qImg + " from reply attachment");	//if image is in replied message (convert to being in same message)
+						//console.log(qImg + " from reply attachment");	//if image is in replied message (convert to being in same message)
 					}else{
 						qImg = details.split(',')[1];
-						console.log(qImg + " from scrape");
+						//console.log(qImg + " from scrape");
 					}
 				}).catch (err =>{
 					console.log(err);
@@ -626,10 +627,10 @@ async function queueAdd(message){
 			}else{
 				if(message.attachments.size >0){
 					qImg = message.attachments.first().url;
-					console.log(qImg + " from attachment");
+					//console.log(qImg + " from attachment");
 				} else{
 					qImg = details.split(',')[1];
-					console.log(qImg + " from scrape");
+					//console.log(qImg + " from scrape");
 				}
 			}
 
@@ -647,9 +648,9 @@ if(!(message.author.id == bitcorn)){
 		throw limiters;
 	}
 	console.log(limiters);
-	console.log(qduration + ' vs. limit: ' + limiters.split(',')[0]);
+	//console.log(qduration + ' vs. limit: ' + limiters.split(',')[0]);
 	qduration = limiters.split(',')[0];
-	console.log(qdelay + ' vs. limit: ' + limiters.split(',')[1]);
+	//console.log(qdelay + ' vs. limit: ' + limiters.split(',')[1]);
 	qdelay = limiters.split(',')[1];
 }
 
@@ -680,8 +681,8 @@ if(!(message.author.id == bitcorn)){
 			}
 				
 			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
-			queueEmbed.react('✅').then(
-				queueEmbed.react('❌'));			
+			await queueEmbed.react('✅');
+			await queueEmbed.react('❌');			
 
 			if(qmsg == 'NO QUEUE'){
 				qmsg = queueEmbed.id;
@@ -694,7 +695,7 @@ if(!(message.author.id == bitcorn)){
 			return true;
 			
 		} catch(err){
-			message.react('❌');
+			await message.react('❌');
 			console.log(err);
 			return false;
 		}
@@ -795,7 +796,7 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 }
 
 async function queuemsgcheck(){
-	console.log('loading up queue db message');
+	console.log('Performing Queue Message Validation Check');
 	//load up queue db msg
 	var qupdated = false;
 	var dbchannel = await client.channels.cache.get(databasechannel);
@@ -804,25 +805,24 @@ async function queuemsgcheck(){
 	var qopposite = '';
 	
 	if(!(qmsg == 'NO QUEUE')){
-		qopposite = qmsg;
+		qopposite = qmsg.replace('dm','');
 	}
 
-	console.log('loading up queue channel');
 	//load up queue channel
 	var qchannel = await client.channels.cache.get(queuechannel);
 	//queueitem = await qchannel.messages.fetch({limit: 100});
 	
-	console.log('processing fetched messages');
+	const allFindNexts = [];
 	//process all fetched messages
-	await qchannel.messages.fetch().then(messages => {
-		messages.forEach(msg => {
-
+	var messages = await qchannel.messages.fetch();
+	messages.forEach(async (msg) => {
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
 			// this will result in helping find any ids that are in qmsg that don't exist
 			if(!(qmsg == 'NO QUEUE')){
 				//find any message id's that are in qmsg, but shouldn't be
 				if(qopposite.includes(msg.id)){
 					qopposite = qopposite.replace(msg.id,'').replace(',,',',');
+					qopposite = qopposite.replace(',,',',');
 					if(qopposite.charAt(0) == ','){qopposite.slice(1)}
 					if(qopposite.charAt(qopposite.length) == ','){qopposite.slice(0,-1)}
 					var endsWithNum = false;
@@ -836,31 +836,32 @@ async function queuemsgcheck(){
 			}
 
 			//find any message id's that are NOT in qmsg, but should be (add missing ones to qmsg)
-			console.log('processing message: ' + msg.id);
+			//console.log('processing message: ' + msg.id);
 			if(!(qmsg.includes(msg.id))){
 				// if it finds a msg.id not in qmsg, check if it has an embed.
-				console.log('message not in queue, checking for embed.')
-				if (msg.embeds[0]){
-					console.log('embed found. adding to qmsg.');
-					console.log('qmsg content before: ' + qmsg);
+				if(msg.embeds.length > 0){
+					//console.log('qmsg content before: ' + qmsg);
 					if(qmsg == 'NO QUEUE'){
 						qmsg = msg.id;
 					}else{
 						qmsg = qmsg + ',' + msg.id;
 					}
-					console.log('qmsg content after: ' + qmsg);
+					//console.log('qmsg content after: ' + qmsg);
 					qupdated = true;
 				}else{
-					console.log('no embed found, skipping message.');
+					console.log('message found in queue channel without embed.');
 				};
 			}
 		});
-	  });
 
 	  // once all messages are processed, check if qmsg contains any that weren't found... if so, remove them
 	if(qopposite.length > 0){
 		console.log('qmsg contains message id not in queue channel, removing the following: ' + qopposite);
-		qmsg = qmsg.replace(qopposite,'').replace(',,',',');
+		var qoppArray = new Array();
+		qoppArray = qopposite.split(',');
+		for(const msgnum of qoppArray){
+			qmsg = await qmsg.replace('dm'+msgnum,'').replace(msgnum,'').replace(',,',',');
+		}
 		if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1)}
 		if(qmsg.charAt(qmsg.length) == ','){qmsg = qmsg.slice(0,-1)}
 		qupdated = true;
@@ -868,10 +869,17 @@ async function queuemsgcheck(){
 
 	//if qmsg needs updated, update message
 	  if(qupdated){
-		  if(qmsg.length = 0){qmsg = 'NO QUEUE';}
-		  console.log('updating qmsg entry to: ' + qmsg);
+		  if(+qmsg.length < 1){qmsg = 'NO QUEUE';}
+		  console.log('Updating Queue Message to: ' + qmsg);
 		  await dbmsg.edit(qmsg);
 	  }
+
+	  console.log('Processing Auction Alerts');
+	  dbchannel = await client.channels.cache.get(databasechannel);
+	  dbmsg = await dbchannel.messages.fetch(queuemsg);
+	  qmsg = dbmsg.content;
+	  await findNext(qmsg);
+
 }
 
 //no longer used
@@ -896,29 +904,10 @@ const asyncSome = async (arr, predicate) => {
 	return false;
 };
 
-// grab details for next auction
-async function getNextAuction() {
-	
 
-	//need to do a check to see if an auction has started since this getNextAuction cycle was started.
-	//if so... abort process.
-	var dbchannel = await client.channels.cache.get(databasechannel);
-	//console.log('Getting Next Auction Details');
-	do{
-		//validate queue message entries and update if needed
-		//console.log('Validating Queue Message');
-		await queuemsgcheck();
-
-//		var auctionmsg = await dbchannel.messages.fetch(databasemsg);
-//		var amsg = auctionmsg.content;
-//		if(!(amsg == 'NO CURRENT AUCTION')){
-//			console.log('an auction was started; aborting get next auction');
-//			return 'live auction';
-//	}
-		var dbmsg = await dbchannel.messages.fetch(queuemsg);
-		var qmsg = dbmsg.content;
-		var qentries = new Array();
-		
+async function findNext(qmsg){
+	//console.log('finding on deck: ' + qmsg);
+	var qentries = new Array();
 		if(qmsg == 'NO QUEUE'){return qmsg;}
 		qmsg = qmsg.replace(/\s+/g, '');
 
@@ -927,13 +916,142 @@ async function getNextAuction() {
 		}else{
 			qentries[0] = qmsg;
 		}
+
+	var qembed;
+	var queueitem;
+	var iSchedule = new Array();
+	var firstItem = true;
+	var iMin = 0;
+	let now = moment();
+	var minTime = moment();
+
+	await asyncSome(qentries, async (i) => {
+		
+		var qchannel = await client.channels.cache.get(queuechannel);
+		try{
+
+			if(!(i.includes('dm'))){ //check if message has already had alert
+				queueitem = await qchannel.messages.fetch(i+'');
+				qembed = await queueitem.embeds[0];
+		
+				if(qembed.timestamp == null){
+					minTime = now;
+					if(firstItem){
+						iMin = 0;
+						firstItem=false;
+					}else{
+						iMin++;
+					}
+					iSchedule.push(i);
+				}else{
+					var embedTime = moment(qembed.timestamp);
+					if(firstItem){
+						minTime = embedTime;
+						iMin = 0; //set min next auction as the first entry in the array.
+						iSchedule.push(i);
+	
+						//console.log('current min time:' + minTime);
+						firstItem = false;
+					}else{
+						if(embedTime.isBefore(minTime)){
+							minTime = moment(qembed.timestamp);
+							iMin++;
+							iSchedule.push(i);
+							//console.log('current min time:' + minTime);
+							//console.log('time diff between now and next item in queue: ' + now.diff(qembed.timestamp));
+						}
+					}
+				}
+			}else{
+				console.log('alert already sent for message id: ' + i);				
+			}
+		}catch(err){
+			console.log('had error: ' + err);
+		}
+	});
+
+	//insert alert function... 
+	//if time is null or within the specific dmAlertTime variable (in minutes), send alert to seller and those who have tagged with ✅
+	var dmcheck = iSchedule[iMin];
+	if(!(dmcheck.includes('dm'))){
+		//console.log('alert time check for: ' + dmcheck);
+		if(minTime.diff(now,"seconds") < dmAlertTime*60 ){
+			await dmAuctionAlerts(dmcheck);
+		}
+	}
+}
+
+async function dmAuctionAlerts(alertMsg) {
+	console.log('Sending DM alerts for: ' + alertMsg);
+	var qchannel = await client.channels.cache.get(queuechannel);
+	var amsg = await qchannel.messages.fetch(alertMsg);
+	var reaction = await amsg.reactions.cache.get('✅');
+	var users = await reaction.users.fetch();
+	var aEmbed = await amsg.embeds[0];
+	await aEmbed.setThumbnail(soonImg);
+
+	//add in a check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
+	/* if(amsg.reactions){
+		var qseller = aEmbed.fields[0].value;
+		qseller = qseller.replace('<@','').replace('>','')
+		const seller = await client.users.fetch(qseller).catch(console.error);
+		await seller.send({ embeds: [aEmbed] }).catch(() => {
+			console.log("Unable to alert seller: " + seller.id);
+		});
+		await amsg.react('976603681850003486');
+	}
+ */	
+
+	users.each(async(user) =>{
+			if(!(user.id == alig)){
+				await user.send({ embeds: [aEmbed] }).catch(() => {
+						console.log("User has DMs closed or no mutual servers: " + user.id);
+					});
+					await reaction.users.remove(user);
+					console.log('DM sent to: ' + user.id);
+				}	
+	});
+
+
+
+	var dbchannel = await client.channels.cache.get(databasechannel);
+	var dbmsg = await dbchannel.messages.fetch(queuemsg);
+	var qmsg = dbmsg.content;
+
+	qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
+	dbmsg.edit(qmsg);
+}
+
+
+
+// grab details for next auction
+async function getNextAuction() {
+	var dbchannel = await client.channels.cache.get(databasechannel);
+	do{
+		//validate queue message entries and update if needed
+		await queuemsgcheck();
+
+		var dbmsg = await dbchannel.messages.fetch(queuemsg);
+		var qmsg = dbmsg.content;
+		var qentries = new Array();
+		
+		if(qmsg == 'NO QUEUE'){return qmsg;}
+		qmsg = qmsg.replace(/\s+/g, '');
+
+		if(qmsg.includes(',')){
+			qentries = qmsg.replace('dm','').split(',');
+		}else{
+			qentries[0] = qmsg.replace('dm','');
+		}
 		var qembed;
 		var itemselected = 'N/A';
 		var queueitem;
 
 		await asyncSome(qentries, async (i) => {
 			var qchannel = await client.channels.cache.get(queuechannel);
+			
 			try{
+				//console.log('fetching msg: ' + i);
 				queueitem = await qchannel.messages.fetch(i+'');
 				qembed = await queueitem.embeds[0];
 
@@ -1023,7 +1141,6 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	await queueitem.delete();
 	
 	let auctiondetails = qseller + ', ' + qduration + ', ' + qreserve + ', ' + qimage + ', ' + qtitle + ', ' + qurl;
-	
 	return auctiondetails;
 }
 
@@ -1120,7 +1237,7 @@ var startup = false;
 
 	// ALI-G STARTUP
 	if(message.author == alig && message.content.includes('Iz awkshun time!')){
-		console.log('deleting startup message');
+		console.log('Startup Message Sent');
 		await message.delete();
 		startup = true;
 	}else{
@@ -1237,7 +1354,7 @@ if(!startup){
 		.setFooter({text: 'Git lernt up den drop sum bits! Biddup yo self! Respek!'})
 		try{
 			await message.author.send({ embeds: [hEmbed] });
-			message.react('📨');
+			await message.react('📨');
 		} catch(err){
 			message.author.send("Yo, u iz haz dem DMs closed or sumthin.");
 			message.channel.send({ embeds: [hEmbed] });
@@ -1246,7 +1363,7 @@ if(!startup){
 
 	if(msg.includes('!queue') || msg.includes('!auction')){
 		var addedtoqueue = queueAdd(message);
-		if(addedtoqueue){message.react('976603681850003486');}
+		if(addedtoqueue){await message.react('976603681850003486');}
 	}
 
 } else{
@@ -1267,7 +1384,7 @@ if(!startup){
 				for (var i=0; i<timeouts.length; i++) {
 				  clearTimeout(timeouts[i]);
 				}} else{
-					message.react('❌');
+					await message.react('❌');
 					message.reply('u iz need an adult fo dat');
 				}
 
@@ -1308,7 +1425,7 @@ if(!startup){
 									//break;
 									//}
 									//console.log(nextauction);
-									console.log('last queue ping: ' + Date.now());
+									//console.log('last queue ping: ' + Date.now());
 									
 									if(nextauction == 'NO QUEUE'){
 										var daybefore = moment.utc().dayOfYear();
@@ -1636,7 +1753,7 @@ if(!startup){
 		}						
 		}
 		} else{
-			message.react('❌');
+			await message.react('❌');
 			message.reply('yoo iz need an adult fo dat.');
 		}	
 		
@@ -1649,7 +1766,7 @@ if(!startup){
 	try{
 		
 		if(msg.includes('booyakasha')){
-			message.react('976603681850003486');
+			await message.react('976603681850003486');
 		}
 		
 		if(msg.includes('booyakornsha')){
@@ -1663,7 +1780,7 @@ if(!startup){
 				pmsg = pmsg.replace(/,,/g,',');
 				dbmsg.edit(pmsg);
 				currentCount = currentCount+1;
-				message.react('🔥').then(msgd => {
+				await message.react('🔥').then(msgd => {
 					setTimeout(() => message.delete(), 2000);
 					message.author.send("Congrads! u wuz number " + currentCount + "/42. u iz rekorded, my man. U iz gonna getta BLT! DM BTCornBLAIQchnz with yo wallet address!");
 				}).catch(() => {
@@ -1717,7 +1834,7 @@ if(!startup){
 							bidamount = override.split(',')[0];
 							highbidder = override.split(',')[1];
 						} else{
-							 message.react('❌');
+							 await message.react('❌');
 							 message.reply('u iz need an adult for dat.');					
 							 return;
 						}
@@ -1863,10 +1980,22 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(user.bot) return;
 	if (!reaction.message.guild) return;
 	if(reaction.message.channel.id == queuechannel){
-		if(reaction.emoji.name === '❌'){
+		if(reaction.emoji.name === '✅'){
+			console.log('Auction Alert Subscriber Added');
+			var reactmsgid = reaction.message.id;
+			var dbchannel = await client.channels.cache.get(databasechannel);
+			var dbmsg = await dbchannel.messages.fetch(queuemsg);
+			let qmsg = dbmsg.content;
+			if(qmsg.includes('dm'+reactmsgid)){
+				qmsg = qmsg.replace('dm'+reactmsgid,reactmsgid);
+				await dbmsg.edit(qmsg);
+			}
+		}else if(reaction.emoji.name === '❌'){
 			let qUser = reaction.message.embeds[0].fields[0].value;
+			console.log(qUser);
 			var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
-			
+			console.log(hasRole);
+
 			if(qUser.includes(user.id) || hasRole){
 				var removemsgid = reaction.message.id;
 				var dbchannel = await client.channels.cache.get(databasechannel);
@@ -1891,14 +2020,11 @@ client.on('messageReactionAdd', async (reaction, user) => {
 							qmsg=qmsg.slice(0, -1);
 						}
 					}
-					dbmsg.edit(qmsg);
-					
-					reaction.message.delete();
+					await dbmsg.edit(qmsg);
 				} else{
 					console.log('Queue message was not in database');
-					reaction.message.delete();
 				}
-				
+				await reaction.message.delete();
 			}else{
 				reaction.users.remove(user);
 			}
