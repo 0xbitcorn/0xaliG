@@ -990,39 +990,50 @@ async function dmAuctionAlerts(alertMsg) {
 	var amsg = await qchannel.messages.fetch(alertMsg);
 	var reaction = await amsg.reactions.cache.get('✅');
 	var users = await reaction.users.fetch();
+	var sellerEmoji = await amsg.reactions.cache.get('976603681850003486');
+	var sellerDMd = false;
+	
 	var aEmbed = await amsg.embeds[0];
 	await aEmbed.setThumbnail(soonImg);
+	var qseller = aEmbed.fields[0].value;
+	qseller = qseller.replace('<@','').replace('>','');
+	const seller = await client.users.fetch(qseller).catch(console.error);
 
-	//add in a check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
-	/* if(amsg.reactions){
-		var qseller = aEmbed.fields[0].value;
-		qseller = qseller.replace('<@','').replace('>','')
-		const seller = await client.users.fetch(qseller).catch(console.error);
+	//check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
+	if(!(sellerEmoji == undefined)){
+		var sellerCheck = await sellerEmoji.users.fetch();
+		if(!(sellerCheck.has(alig))){
+			await seller.send({ embeds: [aEmbed] }).catch(() => {
+				console.log("Unable to alert seller: " + seller.id);
+			});
+			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!').catch(() => {});
+			await amsg.react('976603681850003486');	
+		}
+	}else{
 		await seller.send({ embeds: [aEmbed] }).catch(() => {
 			console.log("Unable to alert seller: " + seller.id);
 		});
-		await amsg.react('976603681850003486');
+		await amsg.react('976603681850003486');	
+		await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!').catch(() => {});
 	}
- */	
 
 	users.each(async(user) =>{
 			if(!(user.id == alig)){
 				await user.send({ embeds: [aEmbed] }).catch(() => {
 						console.log("User has DMs closed or no mutual servers: " + user.id);
 					});
+					await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥').catch(() => {});
 					await reaction.users.remove(user);
 					console.log('DM sent to: ' + user.id);
 				}	
 	});
-
-
 
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	var dbmsg = await dbchannel.messages.fetch(queuemsg);
 	var qmsg = dbmsg.content;
 
 	qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
-	dbmsg.edit(qmsg);
+	await dbmsg.edit(qmsg);
 }
 
 
@@ -1122,7 +1133,7 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	if(qmsg == itemselected){
 		qmsg = 'NO QUEUE';
 	}{
-		qmsg = qmsg.replace(','+itemselected,'').replace(itemselected,'').replace(',,',',');
+		qmsg = qmsg.replace(',dm'+itemselected,'').replace(','+itemselected,'').replace('dm' + itemselected,'').replace(itemselected,'').replace(',,',',');
 		if(qmsg.charAt(0) == ','){
 			qmsg = qmsg.slice(1);
 		}
