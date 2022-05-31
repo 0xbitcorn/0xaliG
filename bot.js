@@ -75,7 +75,7 @@ const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resol
 const botimg = 'https://cdn.discordapp.com/attachments/962059766937567254/974343468350603274/aliG_1.png';
 
 // bot starting soon image
-const soonImg = 'https://cdn.discordapp.com/attachments/962059766937567254/981044944187834439/STARTINGSOON.gif';
+const soonImg = 'https://cdn.discordapp.com/attachments/962059766937567254/981263865570529350/SOON.gif';
 
 // bot start messages
 const auction_start=[
