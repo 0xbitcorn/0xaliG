@@ -1052,7 +1052,7 @@ async function getNextAuction() {
 			
 			try{
 				//console.log('fetching msg: ' + i);
-				queueitem = await qchannel.messages.fetch(i+'');
+				queueitem = await qchannel.messages.fetch(i.replace('dm',''));
 				qembed = await queueitem.embeds[0];
 
 				if(qembed.timestamp == null){
@@ -1067,7 +1067,7 @@ async function getNextAuction() {
 			}catch(err){
 				console.log('had error: ' + err);
 				try{
-					queueitem = await qchannel.messages.fetch(i+'');
+					queueitem = await qchannel.messages.fetch(i.replace('dm',''));
 				}catch{
 					console.log('removing item: ' + i);
 					console.log('qmsg: ' + qmsg)
