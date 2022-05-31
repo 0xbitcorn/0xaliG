@@ -1081,13 +1081,13 @@ async function getNextAuction() {
 						}
 					}while(endsWithNum)
 
-					if(qmsg == i){
+					if(qmsg == i || qmsg == 'dm'+i){
 						console.log('qmsg removing via method 1');
 						qmsg = 'NO QUEUE';
 						await dbmsg.edit(qmsg);
 					}else{
 						console.log('qmsg removing via method 2');
-						qmsg = qmsg.replace(i,'').replace(',,',',').replace(', ','');
+						qmsg = qmsg.replace('dm'+i,'').replace(i,'').replace(',,',',').replace(', ','');
 						if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
 						if(qmsg.charAt(qmsg.length) == ' '){
 							qmsg = qmsg.slice(0,-1);
