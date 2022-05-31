@@ -821,7 +821,7 @@ async function queuemsgcheck(){
 			if(!(qmsg == 'NO QUEUE')){
 				//find any message id's that are in qmsg, but shouldn't be
 				if(qopposite.includes(msg.id)){
-					qopposite = qopposite.replace(msg.id,'').replace(',,',',');
+					qopposite = qopposite.replace('dm'+msg.id,'').replace(msg.id,'').replace(',,',',');
 					qopposite = qopposite.replace(',,',',');
 					if(qopposite.charAt(0) == ','){qopposite.slice(1)}
 					if(qopposite.charAt(qopposite.length) == ','){qopposite.slice(0,-1)}
@@ -973,10 +973,13 @@ async function findNext(qmsg){
 	//insert alert function... 
 	//if time is null or within the specific dmAlertTime variable (in minutes), send alert to seller and those who have tagged with ✅
 	var dmcheck = iSchedule[iMin];
-	if(!(dmcheck.includes('dm'))){
-		//console.log('alert time check for: ' + dmcheck);
-		if(minTime.diff(now,"seconds") < dmAlertTime*60 ){
-			await dmAuctionAlerts(dmcheck);
+	//console.log(dmcheck);
+	if(!(dmcheck == undefined)){
+		if(!(dmcheck.includes('dm'))){
+			//console.log('alert time check for: ' + dmcheck);
+			if(minTime.diff(now,"seconds") < dmAlertTime*60 ){
+				await dmAuctionAlerts(dmcheck);
+			}
 		}
 	}
 }
