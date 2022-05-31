@@ -1795,11 +1795,11 @@ if(!startup){
 				dbmsg.edit(pmsg);
 				currentCount = currentCount+1;
 				await message.react('🔥').then(msgd => {
-					setTimeout(() => message.delete(), 2000);
 					message.author.send("Congrads! u wuz number " + currentCount + "/42. u iz rekorded, my man. U iz gonna getta BLT! DM BTCornBLAIQchnz with yo wallet address!");
 				}).catch(() => {
 					message.channel.send("Yo, u iz haz dem DMs closed or sumthin. DM BTCornBLAIQchnz.");
 				});
+				await message.delete();
 			}else{
 				if(currentCount>42){
 					await message.author.send("Sorry dude, if u iz lookin for dat BLT, me sent out the 42. Der will be more soon, my man.").catch(() => {
