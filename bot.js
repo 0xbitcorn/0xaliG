@@ -467,13 +467,18 @@ async function scrape(nfturl){
 	if(hasPlaceholder){getTitle = false;
 	}else{getTitle = true;}
 
-	while(gotimage == false){
+	//allow a max of 5 checks
+	var imgcheckcount = 0;
+	while(gotimage == false && imgcheckcount < 6){
+		imgcheckcount++;
 		console.log('Finding Image...');
 		await page.waitForTimeout(3000);
+		console.log('waited for time out');
 		var imageHref = await page.evaluate((sel) => {
-			return document.querySelector(sel).getAttribute('src');
+			console.log('returning');
+			return encodeURI(document.querySelector(sel).getAttribute('src'));
 		}, IMAGE_SELECTOR);
-
+console.log('hasPlaceholder: ' + hasPlaceholder);
 		if(hasPlaceholder){
 			if(!(imageHref.includes(placeholder))){getTitle = true;}
 		}else{getTitle = true;}
@@ -491,7 +496,11 @@ async function scrape(nfturl){
 		}
 	}
 	browser.close();
-	return imageTitle + ',' + imageHref;
+	if(gotimage == true){
+		return imageTitle + ',' + imageHref;
+	}else{
+		return 'SCRAPEFAIL';
+	}
 }
 
 async function limitCheck(message, qduration, qdelay){
@@ -605,6 +614,10 @@ async function queueAdd(message){
 		}
 		
 		var details = await scrape(arr[0]);
+		if(details == 'SCRAPEFAIL'){
+			message.reply('Sumthin be wack... Try again, but this time attach your image.');
+			throw details;
+		}
 		if(details == 'only set up for explorer.loopring.io and lexplorer.io'){
 			message.replay(details);
 			throw details;
@@ -1017,23 +1030,27 @@ async function dmAuctionAlerts(alertMsg) {
 		await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!').catch(() => {});
 	}
 
+	if(reaction.count > 1){
 	users.each(async(user) =>{
-			if(!(user.id == alig)){
-				await user.send({ embeds: [aEmbed] }).catch(() => {
-						console.log("User has DMs closed or no mutual servers: " + user.id);
-					});
-					await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥').catch(() => {});
-					await reaction.users.remove(user);
-					console.log('DM sent to: ' + user.id);
-				}	
+		if(!(user.id == alig)){
+			await user.send({ embeds: [aEmbed] }).catch(() => {
+					console.log("User has DMs closed or no mutual servers: " + user.id);
+				});
+				await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥').catch(() => {});
+				await reaction.users.remove(user);
+				console.log('DM sent to: ' + user.id);
+			}	
 	});
-
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	var dbmsg = await dbchannel.messages.fetch(queuemsg);
 	var qmsg = dbmsg.content;
-
+	console.log(alertMsg);
 	qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
 	await dbmsg.edit(qmsg);
+}
+	
+
+
 }
 
 
@@ -1475,6 +1492,8 @@ if(!startup){
 								minutes = parseInt(duration.split('m')[0]);
 							reserve = auctionDeets[2];		// SELLER SET RESERVE
 							imgurl = auctionDeets[3];		// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
+							console.log('imgurl: ' + imgurl);
+							imgurl = imgurl.replace(/\s+/g,'');
 							title = auctionDeets[4];		// NFT TITLE
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
 	
@@ -1495,7 +1514,7 @@ if(!startup){
 								.setTitle('['+ auctiontext + ' STARTED]')
 								.setAuthor({name: authormsg})
 								.setDescription(descript)
-								.setThumbnail(botimg)
+								.setThumbnail(botimg);
 								//.setFooter({text: 'SELLER: ' + seller });
 								let achan = await client.channels.cache.get(auctionchannel);
 								let introEmbed = achan.send({ embeds: [iEmbed] });
@@ -1733,11 +1752,23 @@ if(!startup){
 						if(duration/1000 > 60){
 							if(Math.floor(Math.random() * 100) > 85){
 								const attachment = new MessageAttachment(imgurl);
-								let randomhype = '>>> ' + randommsg('hype');
+								let randomhype = randommsg('hype');
+
 								if(Math.floor(Math.random() * 100) > 50){
-									achan.send({content: randomhype, files: [attachment]});
+									var hypetop = '[' + auctiontext + '] ' + 'HIGH BID: ' + highbid;
+									var hypefooter = 'bid commands: !bid !bit !biddup';
+									let hypeEmbed = new MessageEmbed()
+													.setColor(embedColor)
+													.setAuthor({name: hypetop})
+													.setThumbnail(botimg)
+													.setTitle(title)
+													.setURL(nfturl)
+													.setDescription(randomhype)
+													.setImage(imgurl)
+													.setFooter({text: ''+ hypefooter});
+									await achan.send({ embeds: [hypeEmbed] });
 								} else{
-									achan.send(randomhype);
+									achan.send(':fire: ' + randomhype);
 								}
 							}
 						}
