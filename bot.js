@@ -65,7 +65,7 @@ const livecolor = '#00ab66';					// embed color when live
 const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
 const isLive = false;							// true = live; false = maintenance
-const isSpecialEvent = false;					// special event trigger
+const isSpecialEvent = true;					// special event trigger
 const dmAlertTime = 15;							// number of minutes before auction to start trying to send alerts 
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
