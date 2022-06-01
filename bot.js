@@ -615,7 +615,7 @@ async function queueAdd(message){
 		
 		var details = await scrape(arr[0]);
 		if(details == 'SCRAPEFAIL'){
-			message.reply('Sumthin be wack... Try again, but this time attach your image.');
+			message.reply('Sumthin be wack... Verify dem inputs and commas... if dat checks, maybe attach dat image.');
 			throw details;
 		}
 		if(details == 'only set up for explorer.loopring.io and lexplorer.io'){
