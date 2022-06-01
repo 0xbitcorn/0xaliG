@@ -654,18 +654,18 @@ async function queueAdd(message){
 		if (!(typeof arr[2] === 'undefined')){qreserve = arr[2];}
 		var qdelay = 'N/A';
 		if (!(typeof arr[3] === 'undefined')){qdelay = arr[3];}
-if(!(message.author.id == bitcorn)){
-	var limiters = await limitCheck(message, qduration, qdelay);
-	if(limiters.includes('[LIMIT REACHED]')){
-		message.reply(limiters);
-		throw limiters;
-	}
-	console.log(limiters);
-	//console.log(qduration + ' vs. limit: ' + limiters.split(',')[0]);
-	qduration = limiters.split(',')[0];
-	//console.log(qdelay + ' vs. limit: ' + limiters.split(',')[1]);
-	qdelay = limiters.split(',')[1];
-}
+		if(!(message.author.id == bitcorn)){
+		var limiters = await limitCheck(message, qduration, qdelay);
+		if(limiters.includes('[LIMIT REACHED]')){
+			message.reply(limiters);
+			throw limiters;
+		}
+			console.log(limiters);
+			//console.log(qduration + ' vs. limit: ' + limiters.split(',')[0]);
+			qduration = limiters.split(',')[0];
+			//console.log(qdelay + ' vs. limit: ' + limiters.split(',')[1]);
+			qdelay = limiters.split(',')[1];
+		}
 
 		if(!(qdelay == 'N/A')){
 			var date = new Date();
@@ -1395,6 +1395,7 @@ if(!startup){
 	if(msg.includes('!queue') || msg.includes('!auction')){
 		var addedtoqueue = queueAdd(message);
 		if(addedtoqueue){await message.react('976603681850003486');}
+		if(!(addedtoqueue)){await message.react('❌');}
 	}
 
 } else{
@@ -1439,7 +1440,8 @@ if(!startup){
 						message.reply('sorry, me waz on the crapper... wut now?')
 					}else{
 						var addedtoqueue = await queueAdd(message);
-						if(addedtoqueue){message.reply('Yo, my main man... Added that to the queue!');}
+						if(addedtoqueue){await message.react('976603681850003486');}
+						if(!(addedtoqueue)){await message.reply('Yo, my main man... Added that to the queue!');}
 	}} else{
 		(async() => {
 			do{		
