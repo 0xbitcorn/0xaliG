@@ -853,7 +853,7 @@ async function lots_of_messages_getter(checkchannel, limit) {
 	if(sum_messages.length > queuelimit){
 		sum_messages.length = queuelimit;
 	}
-
+console.log(sum_messages);
 	return sum_messages;
 }
 
