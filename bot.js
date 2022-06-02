@@ -444,7 +444,7 @@ var formatTimezone = function formatTimezone(date) {
 /////////////////
 
 // scrape the nft link site to return title and image
-async function scrape(nfturl){
+async function scrape(nfturl, imgattached = false){
 	console.log('New Queue Item added');
 	const browser = await puppeteer.launch({});
 	const page = await browser.newPage();
@@ -456,7 +456,7 @@ async function scrape(nfturl){
 	var imageTitle;
 	var hasPlaceholder;
 	var placeholder;
-	var gotimage = false
+	var gotimage = imgattached
 	
 	if(nfturl.includes('explorer.loopring.io')){
 		//console.log('explorer.loopring.io');
@@ -832,7 +832,7 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 }
 
 async function fetchMore(channel, limit = 250) {
-    console.log(channel);
+    //console.log(channel);
     if (!channel) {
         throw new Error(`Expected channel, got ${typeof channel}.`);
     }
@@ -1890,7 +1890,8 @@ if(!startup){
 						updateEmbed.setThumbnail();
 						updateEmbed.setImage(imgurl);
 					}		
-
+					
+					await sleep(60000);
 					nextauction = await getNextAuction();
 					if(nextauction == 'NO QUEUE'){
 						console.log('queue empty');
