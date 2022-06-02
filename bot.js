@@ -26,7 +26,12 @@ client.login(auth.token)
 /////////////////
 //  CONSTANTS  //
 /////////////////
+// ADD ABILITY TO REPLY TO GET A DESCRIPTION FIELD
+
 var timeouts = [];
+const gatewayipfs = 'https://gateway.pinata.cloud';
+const loopringipfs = 'https://loopring.mypinata.cloud';
+
 const bitcorn = '416645304830394368';			// bitcorn user id
 const alig = '974143111418765313';				// aliG user id
 const server = '962059766388101301';			// server id
@@ -34,6 +39,7 @@ const auctionchannel = '974014169483452436';	// auction channel
 const auctiontest = '976917431471710289';		// auction test channel
 const queuechannel = '978340918061039656';		// queue channel
 const databasechannel = '975829186063237140'; 	// database channel
+const pauseuntil = moment(1654185600000);		// pause nextauction until input time
 
 
 //ROLES
@@ -65,7 +71,7 @@ const livecolor = '#00ab66';					// embed color when live
 const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
 const isLive = true;							// true = live; false = maintenance
-const isSpecialEvent = true;					// special event trigger
+const isSpecialEvent = false;					// special event trigger
 const dmAlertTime = 15;							// number of minutes before auction to start trying to send alerts 
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
@@ -166,6 +172,7 @@ global.priorbid = '0';				// PREVIOUS HIGH BID
 global.priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
 
 global.killauction = false;			// KILL AUCTION TRIGGER
+
 
 /////////////////
 // DATE FORMAT //
@@ -476,7 +483,12 @@ async function scrape(nfturl){
 		console.log('waited for time out');
 		var imageHref = await page.evaluate((sel) => {
 			console.log('returning');
-			return encodeURI(document.querySelector(sel).getAttribute('src'));
+			var scrapedurl = document.querySelector(sel).getAttribute('src');
+			if(!(scrapedurl.includes(' '))){
+				scrapedurl = encodeURI(scrapedurl);
+				console.log('had to invoke encodeURI');
+			}
+			return scrapedurl;
 		}, IMAGE_SELECTOR);
 console.log('hasPlaceholder: ' + hasPlaceholder);
 		if(hasPlaceholder){
@@ -497,6 +509,7 @@ console.log('hasPlaceholder: ' + hasPlaceholder);
 	}
 	browser.close();
 	if(gotimage == true){
+		imageHref = imageHref.replace(gatewayipfs,loopringipfs);
 		return imageTitle + ',' + imageHref;
 	}else{
 		return 'SCRAPEFAIL';
@@ -524,9 +537,9 @@ change to this when we get more busy
 	//find user's auction limit (uncomment B and C when we get more busy)
 	//if(message.member.roles.cache.has(aliB)){limitCount = 5;maxdelay = 8;}
 	//if(message.member.roles.cache.has(aliC)){limitCount = 7;maxdelay = 24;}
-	if(message.member.roles.cache.has(aliD)){limitCount = 10;maxdelay = 48;}
+	if(message.member.roles.cache.has(aliD)){limitCount = 10;maxdelay = 24;} //consider making this 48 hrs later
 	//Ali E for special events only
-	if(message.member.roles.cache.has(aliF)){limitCount = 741;maxduration = 15;maxdelay = 48;}	
+	if(message.member.roles.cache.has(aliF)){limitCount = 741;maxduration = 5;maxdelay = 24;} //consider making this 48 hrs later and max duration = 15	
 
 //check auction limit first
 	if(lmsg.includes(message.author.id)){
@@ -599,6 +612,10 @@ async function queueAdd(message){
 		var dbchannel = await client.channels.cache.get(databasechannel);
 		var dbmsg = await dbchannel.messages.fetch(queuemsg);
 		let qmsg = dbmsg.content;
+		if(qmsg.split(',').length > 90){
+			message.reply('Sorry man, me be cappt at 90 itemz in da Q... Upgraydz cumming soon!!');
+			throw 'avoid 2000 character limit overrun, refuse queue item';
+		}
 		var inputs;
 		if(msg.includes('!queue')){
 			inputs = msg.replace('!queue','').replace(/\s+/g,'');
@@ -646,8 +663,10 @@ async function queueAdd(message){
 					//console.log(qImg + " from scrape");
 				}
 			}
-
-		qImg = encodeURI(qImg);
+			if(qImg.includes(' ')){
+				qImg = encodeURI(qImg);
+				console.log('had to invoke that encodeURI function.');
+			}
 
 		var qduration = setLength(arr[1]);
 		var qreserve = '0';
@@ -1056,7 +1075,12 @@ async function dmAuctionAlerts(alertMsg) {
 
 
 // grab details for next auction
-async function getNextAuction() {
+async function getNextAuction() { 
+ 	do{
+		await sleep(15000); //wait 15 seconds
+		console.log('waiting until ' + pauseuntil + ' (now = ' + moment() + ')');
+	}while(moment().isBefore(pauseuntil)); 
+ 
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	do{
 		//validate queue message entries and update if needed
@@ -1163,9 +1187,11 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	//console.log('qduration: '+ qduration);
 	let qreserve = await qembed.fields[1].value.replace('RESERVE: ','').replace(' LRC','');
 	//console.log('qreserve: '+ qreserve);
+	let qurl = await qembed.url;
 	let qimage = await qembed.image.url;
 	let qtitle = await qembed.title;
-	let qurl = await qembed.url;
+	
+	qimage = qimage.replace(gatewayipfs,loopringipfs);
 	
 	// add these when ready to go live //
 	await dbmsg.edit(qmsg);
@@ -1288,6 +1314,23 @@ else{ embedColor = infocolor; auctiontext = 'FAKE AUCTION';}
 if(!startup){
 	// check if member has the necessary role for using commands
 	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){	
+		if(msg.includes('!count')){
+			var dbchannel = await client.channels.cache.get(databasechannel);
+			var dbmsg = await dbchannel.messages.fetch(queuemsg);
+			let qmsg = dbmsg.content;
+			message.reply('Current items in queue: ' + qmsg.split(',').length);
+			
+			let qchan = await client.channels.cache.get(queuechannel); 
+			let check = await qchan.messages.fetch('981801275811303424');
+			let checkEmbed = await check.embeds[0];
+			let checkimg = checkEmbed.image.url;
+			console.log(checkimg);
+			checkimg = checkimg.replace(gatewayipfs, loopringipfs).replace(/\s+/g,'');
+			checkEmbed.setImage(checkimg);
+			check.edit(new MessageEmbed(checkEmbed));
+			check.edit({embeds: [checkEmbed]});
+		}
+		
 		if(message.author.id == bitcorn){
 			// create a new database entry
 			if(msg.includes('!createmsg')){
@@ -1301,12 +1344,12 @@ if(!startup){
 			}
 
 			// count the number of winners in current prize message
-			if(msg.includes('!count')){
+			/* if(msg.includes('!count')){
 				var dbchannel = await client.channels.cache.get(databasechannel);
-				var dbmsg = await dbchannel.messages.fetch(prizemsg);
-				let pmsg = dbmsg.content;
+				var dbmsg = await dbchannel.messages.fetch(queuemsg);
+				let qmsg = dbmsg.content;
 				message.reply(pmsg.split(',').length + '/42');
-			}
+			} */
 
 			if(msg.includes('!reset')){
 				await clearLimitMsg();
@@ -1369,26 +1412,28 @@ if(!startup){
 	}
 
 	if(msg == '!help'){
-		let hEmbed = new MessageEmbed()
+		var helptext = "==================\n:AWWYISS: **BID COMMANDS** :AWWYISS:\n==================\n`!bid`, `!bit`, and `!biddup`\n> All commands do the same thing\n> Follow command with your bid amount in LRC (ie `!bid 42` would submit a bid of 42 LRC)\n\n\n==============\n:NFT: **THE QUEUE** :NFT:\n==============\n\n\nOnce an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n\n**NEED TO REMOVE YOUR ITEM?**\n> Use the :x: emoji\n\n> FYI: Only admin or the actual seller can remove an item\n\n**WANT AN ALERT WHEN AUCTION IS NEAR?**\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
+
+		/* let hEmbed = new MessageEmbed()
 		.setColor(infocolor)
 		.setTitle('[Å╙ï-G BASICS]')
 		.addFields(
-			{ name: '[BID COMMANDS]', value: '!bid, !bit, or !biddup <amount> \n *all perform the same function* \n \n '},
-			{ name: '\u200B', value: '\u200B' },
-			{ name: '[AUCTION COMMANDS]', value: '*Limited to certain roles, only one auction allowed at a time*'},
-			{ name: 'START AUCTION', value: '1.) Post your image \n 2.) Reply to that image post with the command: \n      !auction **<NFT link>**, **<duration>**, <reserve> \n *<NFT link> is the link to the NFT on the explorer \n <duration> can be entered as HH:MM or as #d #h #m \n <items> in bold are required*'},								
-			{ name: 'OVERRIDE BID', value: 'Admin can override the current bid by using the command: \n !override <amount>, <@biddername>'},
-			{ name: 'KILL AUCTION', value: 'Admin can kill an auction by using the command: \n !auction kill \n '}
+			{ name: '[BIDDING]', value: '!bid, !bit, or !biddup <amount> \n *all perform the same function* \n \n '},
+			//{ name: '\u200B', value: '\u200B' },
+			{ name: '[SUBMIT AN AUCTION]', value: '!queue **<NFT link>**, **<duration>**, <reserve>, < \n *<NFT link> is the link to the NFT on the explorer \n <duration> can be entered as HH:MM or as #d #h #m \n <items> in bold are required*'},								
+			//{ name: 'OVERRIDE BID', value: 'Admin can override the current bid by using the command: \n !override <amount>, <@biddername>'},
+			//{ name: 'KILL AUCTION', value: 'Admin can kill an auction by using the command: \n !auction kill \n '}
 		)
-		.setDescription('If you have any questions or suggestions,\n please DM @BTCornBLAIQchnz')
+		.setDescription('If you have any questions or suggestions,\n please DM @BTCornBLAIQchnz. For more information, see the pinned message in the auction haus channel.')
 		.setThumbnail(botimg)
-		.setFooter({text: 'Git lernt up den drop sum bits! Biddup yo self! Respek!'})
+		.setFooter({text: 'Git lernt up den drop sum bits! Biddup yo self! Respek!'}) */
 		try{
-			await message.author.send({ embeds: [hEmbed] });
+			//await message.author.send({ embeds: [hEmbed] });
+			await message.author.send(helptext);
 			await message.react('📨');
 		} catch(err){
-			message.author.send("Yo, u iz haz dem DMs closed or sumthin.");
-			message.channel.send({ embeds: [hEmbed] });
+			message.author.send("Yo, u iz haz dem DMs closed or sumthin. Check pinned message!");
+			//message.channel.send({ embeds: [hEmbed] });
 		}
 	}
 
@@ -1403,7 +1448,7 @@ if(!startup){
 	// limit these functions to approved auction roles				
 	if( startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){
 			// kill function (limit to admin only)
-			if(msg == 'kill'){
+			if(msg == '!kill'){
 				if(message.member.roles.cache.has(puzzlegang) || message.member.roles.cache.has(kernalcommander)){
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(databasemsg);
@@ -1496,6 +1541,7 @@ if(!startup){
 							imgurl = auctionDeets[3];		// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
 							console.log('imgurl: ' + imgurl);
 							imgurl = imgurl.replace(/\s+/g,'');
+							imgurl = imgurl.replace(gatewayipfs, loopringipfs);
 							title = auctionDeets[4];		// NFT TITLE
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
 	
@@ -2053,7 +2099,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					if(qmsg == removemsgid){
 						qmsg = 'NO QUEUE';
 					}else{
-						qmsg = qmsg.replace(removemsgid,'').replace(', ,',',');
+						qmsg = qmsg.replace(removemsgid,'').replace(',,',',');
 						
 						if(qmsg.charAt(0)==','){
 							qmsg=qmsg.slice(2);
