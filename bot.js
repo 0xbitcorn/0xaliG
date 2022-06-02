@@ -849,11 +849,11 @@ async function lots_of_messages_getter(checkchannel, limit) {
             break;
         }
     }
-
+console.log(sum_messages.length);
 	if(sum_messages.length > queuelimit){
 		sum_messages.length = queuelimit;
 	}
-console.log(sum_messages);
+
 	return sum_messages;
 }
 
@@ -879,6 +879,7 @@ async function queuemsgcheck(){
 	const allFindNexts = [];
 	//process all fetched messages
 	var messages = await lots_of_messages_getter(queuechannel, 500); //qchannel.messages.fetch();
+	console.log('2nd' + messages);
 	messages.forEach(async (msg) => {
 		console.log(msg.id);
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
