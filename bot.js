@@ -654,7 +654,7 @@ async function queueAdd(message){
 					}
 				}).catch (err =>{
 					console.log(err);
-					await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
+					//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
 					qImg = details.split(',')[1];
 				});
 			}else{
@@ -732,7 +732,7 @@ async function queueAdd(message){
 		} catch(err){
 			await message.react('❌');
 			console.log(err);
-			await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
+			//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
 			return false;
 		}
 }
@@ -1031,7 +1031,7 @@ async function findNext(qmsg){
 			}
 		}catch(err){
 			console.log('had error: ' + err);
-			await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
+			//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
 		}
 	});
 
@@ -1150,7 +1150,7 @@ async function getNextAuction() {
 				}; 
 			}catch(err){
 				console.log('had error: ' + err);
-				await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
+				//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
 				try{
 					queueitem = await qchannel.messages.fetch(i.replace('dm',''));
 				}catch{
