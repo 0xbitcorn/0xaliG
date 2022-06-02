@@ -31,6 +31,7 @@ client.login(auth.token)
 var timeouts = [];
 const gatewayipfs = 'https://gateway.pinata.cloud';
 const loopringipfs = 'https://loopring.mypinata.cloud';
+const queuelimit = 90;
 
 const bitcorn = '416645304830394368';			// bitcorn user id
 const alig = '974143111418765313';				// aliG user id
@@ -612,7 +613,7 @@ async function queueAdd(message){
 		var dbchannel = await client.channels.cache.get(databasechannel);
 		var dbmsg = await dbchannel.messages.fetch(queuemsg);
 		let qmsg = dbmsg.content;
-		if(qmsg.split(',').length > 90){
+		if(qmsg.split(',').length > queuelimit){
 			message.reply('Sorry man, me be cappt at 90 itemz in da Q... Upgraydz cumming soon!!');
 			throw 'avoid 2000 character limit overrun, refuse queue item';
 		}
@@ -827,6 +828,34 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	return dbmsg.edit(dbstr);
 }
 
+async function lots_of_messages_getter(channel, limit) {
+    const sum_messages = [];
+    let last_id;
+
+    while (true) {
+        const options = { limit: 100 };
+        if (last_id) {
+            options.before = last_id;
+        }
+
+        const messages = await channel.fetchMessages(options);
+        sum_messages.push(...messages.array());
+        last_id = messages.last().id;
+
+        if (messages.size != 100 || sum_messages >= limit) {
+            break;
+        }
+    }
+
+	if(sum_messages.length > queuelimit){
+		sum_messages.length = queuelimit;
+	}
+
+	return sum_messages;
+}
+
+
+
 async function queuemsgcheck(){
 	console.log('Performing Queue Message Validation Check');
 	//load up queue db msg
@@ -846,7 +875,7 @@ async function queuemsgcheck(){
 	
 	const allFindNexts = [];
 	//process all fetched messages
-	var messages = await qchannel.messages.fetch();
+	var messages = await lots_of_messages_getter(queuechannel, 500); //qchannel.messages.fetch();
 	messages.forEach(async (msg) => {
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
 			// this will result in helping find any ids that are in qmsg that don't exist
@@ -1408,7 +1437,7 @@ if(!startup){
 	}
 
 	if(msg == '!help'){
-		var helptext = "<a:BOOYAKASHA:976603681850003486> **[Åuction ╙isting ïnteractive Gangsta]** <a:BOOYAKASHA:976603681850003486>\n*> For more information, including how to submit items for auction, see the pinned message in the auction haus channel.\n> <https://discord.com/channels/962059766388101301/974014169483452436/981783418117451816>*\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different options for fun\n> Follow command with the bid amount in LRC\n> EXAMPLE: `!bid 69` would submit a bid of 69 LRC\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :x: emoji\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT BEFORE AN AUCTION STARTS?*\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
+		var helptext = "<a:BOOYAKASHA:976603681850003486> **[Åuction ╙isting ïnteractive Gangsta]** <a:BOOYAKASHA:976603681850003486>\n> *For more information, including how to submit items for auction, see the pinned message in the auction haus channel.*\n> *<https://discord.com/channels/962059766388101301/974014169483452436/981783418117451816>*\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different options for fun\n> Follow command with the bid amount in LRC\n> EXAMPLE: `!bid 69` would submit a bid of 69 LRC\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :x: emoji\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT BEFORE AN AUCTION STARTS?*\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
 
 		/* let hEmbed = new MessageEmbed()
 		.setColor(infocolor)
