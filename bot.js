@@ -831,32 +831,38 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	return dbmsg.edit(dbstr);
 }
 
-async function lots_of_messages_getter(checkchannel, limit) {
-    const sum_messages = [];
-    let last_id;
+async function fetchMore(channel, limit = 250) {
+    console.log(channel);
+    if (!channel) {
+        throw new Error(`Expected channel, got ${typeof channel}.`);
+    }
+    /* if (limit <= 100) {
+        return channel.messages.fetch({ limit });
+    } */
 
-    while (true) {
-        const options = { limit: 100 };
-        if (last_id) {
-            options.before = last_id;
+    let collection = new Collection();
+    let lastId = null;
+    let options = {};
+    let remaining = limit;
+
+    while (remaining > 0) {
+        options.limit = remaining > 100 ? 100 : remaining;
+        remaining = remaining > 100 ? remaining - 100 : 0;
+
+        if (lastId) {
+            options.before = lastId;
         }
 
-        const messages = await client.channels.cache.get(checkchannel).messages.fetch(options);
-		console.log("test1" + messages);
-        sum_messages.push(messages);
-		console.log("test2" + sum_messages);
-        last_id = messages.last().id;
-		console.log('messages size: '+ messages.size())
-        if (messages.size() != 100 || sum_messages.length >= limit) {
+        let messages = await channel.messages.fetch(options);
+        if (!messages.last()) {
             break;
         }
-    }
-console.log(sum_messages.length);
-	if(sum_messages.length > queuelimit){
-		sum_messages.length = queuelimit;
-	}
 
-	return sum_messages;
+        collection = collection.concat(messages);
+        lastId = messages.last().id;
+    }
+
+    return collection;
 }
 
 
@@ -880,9 +886,22 @@ async function queuemsgcheck(){
 	
 	const allFindNexts = [];
 	//process all fetched messages
-	var messages = await lots_of_messages_getter(queuechannel, 500); //qchannel.messages.fetch();
-	console.log('2nd' + messages);
-	messages.forEach(async (msg) => {
+
+	try {
+		const myChan = await client.channels.fetch(queuechannel);
+		const list = await fetchMore(myChan, 120);
+		//const table_authors = list.map((msg) => msg.author.username);
+		//const table_messages = list.map((msg) => msg.content);
+	
+		//for (let i = 0; i < list.size; i++) {
+		   // How to get things from : 
+		   // reactions: ReactionManager { message: [Circular *1] }
+	
+	}catch (err) {
+		console.log(err);
+	}
+
+	list.forEach(async (msg) => {
 		console.log(msg.id);
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
 			// this will result in helping find any ids that are in qmsg that don't exist
