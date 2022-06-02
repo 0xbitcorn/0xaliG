@@ -831,33 +831,8 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	return dbmsg.edit(dbstr);
 }
 
-async function getMessages(channel: TextChannel, limit: number = 100): Promise<Message[]> {
-	let out: Message[] = []
-	if (limit <= 100) {
-	  let messages: Collection < string, Message > = await channel.messages.fetch({ limit: limit })
-	  out.push(...messages.array())
-	} else {
-	  let rounds = (limit / 100) + (limit % 100 ? 1 : 0)
-	  let last_id: string = ""
-	  for (let x = 0; x < rounds; x++) {
-		const options: ChannelLogsQueryOptions = {
-		  limit: 100
-		}
-		if (last_id.length > 0) {
-		  options.before = last_id
-		}
-		const messages: Collection < string, Message > = await channel.messages.fetch(options)
-		out.push(...messages.array())
-		last_id = messages.array()[(messages.array().length - 1)].id
-	  }
-	}
-console.log(out.length);
-	if(out.length > queuelimit){
-		out.length = queuelimit;
-	}
-  }
-  
- /*  const sum_messages = [];
+async function lots_of_messages_getter(checkchannel, limit) {
+    const sum_messages = [];
     let last_id;
 
     while (true) {
@@ -866,7 +841,7 @@ console.log(out.length);
             options.before = last_id;
         }
 
-        const messages = await channel.fetch(options);
+        const messages = await client.channels.cache.get(checkchannel).messages.fetch(options);
         sum_messages.push(...messages.array());
         last_id = messages.last().id;
 
@@ -880,7 +855,7 @@ console.log(out.length);
 	}
 
 	return sum_messages;
-} */
+}
 
 
 
@@ -903,7 +878,7 @@ async function queuemsgcheck(){
 	
 	const allFindNexts = [];
 	//process all fetched messages
-	var messages = await getMessages(queuechannel, 500); //qchannel.messages.fetch();
+	var messages = await lots_of_messages_getter(queuechannel, 500); //qchannel.messages.fetch();
 	messages.forEach(async (msg) => {
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
 			// this will result in helping find any ids that are in qmsg that don't exist
