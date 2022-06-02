@@ -1038,7 +1038,7 @@ async function dmAuctionAlerts(alertMsg) {
 			await seller.send({ embeds: [aEmbed] }).catch(() => {
 				console.log("Unable to alert seller: " + seller.id);
 			});
-			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> https://discord.com/channels/962059766388101301/974014169483452436').catch(() => {});
+			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
 			await amsg.react('976603681850003486');	
 		}
 	}else{
@@ -1046,7 +1046,7 @@ async function dmAuctionAlerts(alertMsg) {
 			console.log("Unable to alert seller: " + seller.id);
 		});
 		await amsg.react('976603681850003486');	
-		await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> https://discord.com/channels/962059766388101301/974014169483452436').catch(() => {});
+		await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
 	}
 
 	if(reaction.count > 1){
@@ -1055,7 +1055,7 @@ async function dmAuctionAlerts(alertMsg) {
 			await user.send({ embeds: [aEmbed] }).catch(() => {
 					console.log("User has DMs closed or no mutual servers: " + user.id);
 				});
-				await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥\n> https://discord.com/channels/962059766388101301/974014169483452436').catch(() => {});
+				await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
 				await reaction.users.remove(user);
 				console.log('DM sent to: ' + user.id);
 			}	
@@ -1412,7 +1412,7 @@ if(!startup){
 	}
 
 	if(msg == '!help'){
-		var helptext = "<a:BOOYAKASHA:976603681850003486> **[Åuction ╙isting ïnteractive Gangsta]** <a:BOOYAKASHA:976603681850003486>\n*> For more information, including how to submit items for auction, see the pinned message in the auction haus channel.*\n> *https://discord.com/channels/962059766388101301/974014169483452436/981783418117451816*\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different options for fun\n> Follow command with the bid amount in LRC\n> EXAMPLE: `!bid 69` would submit a bid of 69 LRC\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :x: emoji\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT BEFORE AN AUCTION STARTS?*\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
+		var helptext = "<a:BOOYAKASHA:976603681850003486> **[Åuction ╙isting ïnteractive Gangsta]** <a:BOOYAKASHA:976603681850003486>\n*> For more information, including how to submit items for auction, see the pinned message in the auction haus channel.*\n> *<https://discord.com/channels/962059766388101301/974014169483452436/981783418117451816>*\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different options for fun\n> Follow command with the bid amount in LRC\n> EXAMPLE: `!bid 69` would submit a bid of 69 LRC\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :x: emoji\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT BEFORE AN AUCTION STARTS?*\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
 
 		/* let hEmbed = new MessageEmbed()
 		.setColor(infocolor)
