@@ -1320,7 +1320,7 @@ if(!startup){
 			let qmsg = dbmsg.content;
 			message.reply('Current items in queue: ' + qmsg.split(',').length);
 			
-			let qchan = await client.channels.cache.get(queuechannel); 
+			/* let qchan = await client.channels.cache.get(queuechannel); 
 			let check = await qchan.messages.fetch('981801275811303424');
 			let checkEmbed = await check.embeds[0];
 			let checkimg = checkEmbed.image.url;
@@ -1328,7 +1328,7 @@ if(!startup){
 			checkimg = checkimg.replace(gatewayipfs, loopringipfs).replace(/\s+/g,'');
 			checkEmbed.setImage(checkimg);
 			check.edit(new MessageEmbed(checkEmbed));
-			check.edit({embeds: [checkEmbed]});
+			check.edit({embeds: [checkEmbed]}); */
 		}
 		
 		if(message.author.id == bitcorn){
@@ -1412,7 +1412,7 @@ if(!startup){
 	}
 
 	if(msg == '!help'){
-		var helptext = "==================\n:AWWYISS: **BID COMMANDS** :AWWYISS:\n==================\n`!bid`, `!bit`, and `!biddup`\n> All commands do the same thing\n> Follow command with your bid amount in LRC (ie `!bid 42` would submit a bid of 42 LRC)\n\n\n==============\n:NFT: **THE QUEUE** :NFT:\n==============\n\n\nOnce an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n\n**NEED TO REMOVE YOUR ITEM?**\n> Use the :x: emoji\n\n> FYI: Only admin or the actual seller can remove an item\n\n**WANT AN ALERT WHEN AUCTION IS NEAR?**\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
+		var helptext = "==================\n<:AWWYISS:963859479135416360> **BID COMMANDS** <:AWWYISS:963859479135416360>\n==================\n`!bid`, `!bit`, and `!biddup`\n> All commands do the same thing\n> Follow command with your bid amount in LRC (ie `!bid 42` would submit a bid of 42 LRC)\n\n\n==============\n<:NFT:964673439849922560> **THE QUEUE** <:NFT:964673439849922560>\n==============\nOnce an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n\n**NEED TO REMOVE YOUR ITEM?**\n> Use the :x: emoji\n\n> FYI: Only admin or the actual seller can remove an item\n\n**WANT AN ALERT WHEN AUCTION IS NEAR?**\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
 
 		/* let hEmbed = new MessageEmbed()
 		.setColor(infocolor)
