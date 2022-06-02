@@ -889,7 +889,8 @@ async function queuemsgcheck(){
 
 	try {
 		const myChan = await client.channels.fetch(queuechannel);
-		const list = await fetchMore(myChan, 120);
+		var list = new Collection();
+		list = await fetchMore(myChan, 120);
 		//const table_authors = list.map((msg) => msg.author.username);
 		//const table_messages = list.map((msg) => msg.content);
 	
