@@ -862,7 +862,7 @@ async function fetchMore(channel, limit = 250) {
         lastId = messages.last().id;
     }
 
-    return collection;
+    return collection.reverse();
 }
 
 
