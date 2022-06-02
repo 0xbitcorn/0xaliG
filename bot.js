@@ -1076,10 +1076,6 @@ async function dmAuctionAlerts(alertMsg) {
 
 // grab details for next auction
 async function getNextAuction() { 
- 	do{
-		await sleep(15000); //wait 15 seconds
-		console.log('waiting until ' + pauseuntil + ' (now = ' + moment() + ')');
-	}while(moment().isBefore(pauseuntil)); 
  
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	do{
