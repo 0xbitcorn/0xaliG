@@ -2,7 +2,7 @@
 //  ALI - G: AUCTION LISTING INTERACTIVE GANGSTA  //
 ////////////////////////////////////////////////////
 
-const {Client, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
+const {Client, Intents, MessageEmbed, MessageAttachment, Collection} = require('discord.js');
 const puppeteer = require('puppeteer');
 const moment = require('moment');
 const auth = require('./auth.json');
