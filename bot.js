@@ -842,7 +842,7 @@ async function lots_of_messages_getter(checkchannel, limit) {
         }
 
         const messages = await client.channels.cache.get(checkchannel).messages.fetch(options);
-        sum_messages.push(...messages.array());
+        sum_messages.push(messages.array());
         last_id = messages.last().id;
 
         if (messages.size != 100 || sum_messages >= limit) {
