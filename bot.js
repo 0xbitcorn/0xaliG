@@ -880,6 +880,7 @@ async function queuemsgcheck(){
 	//process all fetched messages
 	var messages = await lots_of_messages_getter(queuechannel, 500); //qchannel.messages.fetch();
 	messages.forEach(async (msg) => {
+		console.log(msg.id);
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
 			// this will result in helping find any ids that are in qmsg that don't exist
 			if(!(qmsg == 'NO QUEUE')){
@@ -903,7 +904,8 @@ async function queuemsgcheck(){
 			//console.log('processing message: ' + msg.id);
 			if(!(qmsg.includes(msg.id))){
 				// if it finds a msg.id not in qmsg, check if it has an embed.
-				if(msg.embeds.length > 0){
+				try{
+					if(msg.embeds.length > 0){
 					//console.log('qmsg content before: ' + qmsg);
 					if(qmsg == 'NO QUEUE'){
 						qmsg = msg.id;
@@ -915,6 +917,9 @@ async function queuemsgcheck(){
 				}else{
 					console.log('message found in queue channel without embed.');
 				};
+			}catch{
+				console.log(msg.id);
+			}
 			}
 		});
 
