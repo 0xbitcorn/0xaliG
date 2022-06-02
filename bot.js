@@ -1666,7 +1666,7 @@ if(!startup){
 								}							
 							}
 	
-							var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup';
+							var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup\naliG.loopring.eth';
 							var authormsg = 'NO BIDS YET';
 	
 							let aEmbed = new MessageEmbed()
@@ -1862,7 +1862,7 @@ if(!startup){
 
 								if(Math.floor(Math.random() * 100) > 50){
 									var hypetop = '[' + auctiontext + '] ' + 'HIGH BID: ' + highbid;
-									var hypefooter = 'bid commands: !bid !bit !biddup';
+									var hypefooter = 'bid commands: !bid !bit !biddup\naliG.loopring.eth';
 									let hypeEmbed = new MessageEmbed()
 													.setColor(embedColor)
 													.setAuthor({name: hypetop})
