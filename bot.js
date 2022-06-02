@@ -1412,7 +1412,7 @@ if(!startup){
 	}
 
 	if(msg == '!help'){
-		var helptext = "**Åuction ╙isting ïnteractive Gangsta**\n\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different to have fun\n> Follow command with bid amount in LRC (ie `!bid 69` would submit a bid of 69 LRC)\n\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :x: emoji\n\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT WHEN AUCTION IS NEAR?*\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
+		var helptext = "**[HELP] Åuction ╙isting ïnteractive Gangsta**\n\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different to have fun\n> Follow command with bid amount in LRC (ie `!bid 69` would submit a bid of 69 LRC)\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :x: emoji\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT WHEN AUCTION IS NEAR?*\n> Use the :white_check_mark:  emoji\n> FYI: Sellers automatically get a DM alert for their own auctions";
 
 		/* let hEmbed = new MessageEmbed()
 		.setColor(infocolor)
