@@ -904,6 +904,11 @@ async function queuemsgcheck(){
 
 	list.forEach(async (msg) => {
 		console.log(msg.id);
+
+		//check time posted + delay and order by that
+		//compute anticipated time before auction
+		//send DMs when it's within the true 15 min zone
+
 			// if qmsg isn't NO QUEUE, remove any found message ids while processing
 			// this will result in helping find any ids that are in qmsg that don't exist
 			if(!(qmsg == 'NO QUEUE')){
@@ -1891,7 +1896,7 @@ if(!startup){
 						updateEmbed.setImage(imgurl);
 					}		
 					
-					await sleep(60000);
+					await sleep(30000);
 					nextauction = await getNextAuction();
 					if(nextauction == 'NO QUEUE'){
 						console.log('queue empty');
@@ -1917,11 +1922,11 @@ if(!startup){
 	
 	try{
 		
-		if(msg.includes('booyakasha')){
+		if(msg.includes('booyakasha') || msg.includes('booyakornsha')){
 			await message.react('976603681850003486');
 		}
 		
-		if(msg.includes('booyakornsha')){
+/* 		if(msg.includes('booyakornsha')){
 			
 			var dbchannel = await client.channels.cache.get(databasechannel);
 			var dbmsg = await dbchannel.messages.fetch(prizemsg);
@@ -1947,7 +1952,7 @@ if(!startup){
 					await message.delete();
 				}
 			}
-		}
+		} */
 
 
 		if(msg.includes('!bid') || msg.includes('!bit') || msg.includes('!biddup') || msg.includes('!override')){
