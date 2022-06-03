@@ -1519,7 +1519,7 @@ if(!startup){
 			} else{	
 				// Starting from a sent !auction message
 				// set status to dnd and post initial message	
-
+				
 				if(!startup && client.user.presence.status == 'dnd'){
 					if(dbmsg == 'NO CURRENT AUCTION'){
 						client.user.setStatus('online');
@@ -1598,7 +1598,8 @@ if(!startup){
 
 							let descript = randommsg('start');
 												
-						//initial message						
+						//initial message		
+							kill = false;				
 							var authormsg = 'Åuction ╙isting ïnteractive Gangsta';
 							let iEmbed = new MessageEmbed()
 								.setColor(infocolor)
