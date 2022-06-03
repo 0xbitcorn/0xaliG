@@ -2105,7 +2105,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 				if(auctionToKill == initialmsg || auctionToKill == secondmsg){
 					let qUser = reaction.message.embeds[0].fields[0].value;
 					var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
-				}
+				
 
 				if(qUser.includes(user.id) || hasRole){
 					kill = true;  //wonder if deleting the embed message would work, but we'll try kill first	
@@ -2115,6 +2115,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					console.log('unauthorized user trying to kill auction');
 					reaction.users.remove(user);
 				}
+			}
 			}
 		}
 	}catch(err){
