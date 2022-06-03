@@ -174,6 +174,7 @@ global.priorbid = '0';				// PREVIOUS HIGH BID
 global.priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
 
 global.killauction = false;			// KILL AUCTION TRIGGER
+global.kill = false;				// KILL 2.0
 
 
 /////////////////
@@ -1142,7 +1143,6 @@ async function dmAuctionAlerts(alertMsg) {
 
 // grab details for next auction
 async function getNextAuction() { 
- 
 	var dbchannel = await client.channels.cache.get(databasechannel);
 	do{
 		//validate queue message entries and update if needed
@@ -1495,7 +1495,7 @@ if(!startup){
 			await message.author.send(helptext);
 			await message.react('📨');
 		} catch(err){
-			message.author.send("Yo, u iz haz dem DMs closed or sumthin. Check pinned message!");
+			message.reply("Yo, u iz haz dem DMs closed or sumthin. Check pinned message!");
 			//message.channel.send({ embeds: [hEmbed] });
 		}
 	}
@@ -1505,38 +1505,17 @@ if(!startup){
 		if(addedtoqueue){await message.react('976603681850003486');}
 		if(!(addedtoqueue)){await message.react('❌');}
 	}
-
 } else{
 
 	// limit these functions to approved auction roles				
-	if( startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){
-			// kill function (limit to admin only)
-			if(msg == '!kill'){
-				if(message.member.roles.cache.has(puzzlegang) || message.member.roles.cache.has(kernalcommander)){
-				var dbchannel = await client.channels.cache.get(databasechannel);
-				var dbmsg = await dbchannel.messages.fetch(databasemsg);
-				dbmsg.edit('NO CURRENT AUCTION');
-				achan.send('Sorry, boyz and missez. One time when me was high, me sold me car for like 24 chicken McNuggets. I think I betuh stop this awkshun now. Gimme a bit.');
-				client.user.setStatus('online');
-				client.user.setActivity('dat sexy static channel', {type: 'WATCHING'});
-				killauction = true;
-				
-				for (var i=0; i<timeouts.length; i++) {
-				  clearTimeout(timeouts[i]);
-				}} else{
-					await message.react('❌');
-					message.reply('u iz need an adult fo dat');
-				}
-
-			// temporary workaround for auctionkill issue				
-			} else if(killauction == true){
+	if(startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){
+			if(killauction == true){
 				message.reply('gimme one mo minute... i need to kill an awkshun and finnish me smoke')
 				message.reply('!timer 1');
 				setTimeout(() => {
 					killauction = false;
 					message.reply('ok, wut?');
 				}, "59000");
-
 			} else{	
 				// Starting from a sent !auction message
 				// set status to dnd and post initial message	
@@ -1561,6 +1540,7 @@ if(!startup){
 							do{
 									//if(dbmsg.content == 'NO CURRENT AUCTION'){
 									nextauction = await getNextAuction();
+									kill = false; //reset if last auction was killed
 									//if(nextauction == 'live auction'){
 									//console.log('encountered live auction, aborting secondary process.');
 									//break;
@@ -1629,6 +1609,8 @@ if(!startup){
 								//.setFooter({text: 'SELLER: ' + seller });
 								let achan = await client.channels.cache.get(auctionchannel);
 								let introEmbed = achan.send({ embeds: [iEmbed] });
+								achan.send('Yo! <@' + sellerid + '>... u iz up!!! Lez do dis!');
+
 							//save intro id and update embed color
 							
 							client.user.setStatus('dnd');
@@ -1700,7 +1682,10 @@ if(!startup){
 								}
 															
 					while(duration > 0 && killauction == false){
-									await sleep(nextupdate);
+								if(kill == true){duration = 0; nextupdate = 0;}			
+									await sleep(nextupdate);			
+								if(kill == true){duration = 0; nextupdate = 0;}
+								else{
 									var dbchannel = await client.channels.cache.get(databasechannel);
 									var dbmsg = await dbchannel.messages.fetch(databasemsg);
 									let amsg = dbmsg.content;
@@ -1894,8 +1879,9 @@ if(!startup){
 						
 						updateEmbed.setThumbnail();
 						updateEmbed.setImage(imgurl);
-					}		
-					
+					}
+					}	
+
 					await sleep(30000);
 					nextauction = await getNextAuction();
 					if(nextauction == 'NO QUEUE'){
@@ -1904,7 +1890,7 @@ if(!startup){
 						startup = true;
 					}
 //		}
-		} while(killauction == false)
+		} while(killauction == false)   //consider changing to when no queue
 		
 	})();
 		}						
@@ -1925,35 +1911,6 @@ if(!startup){
 		if(msg.includes('booyakasha') || msg.includes('booyakornsha')){
 			await message.react('976603681850003486');
 		}
-		
-/* 		if(msg.includes('booyakornsha')){
-			
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(prizemsg);
-			let pmsg = dbmsg.content;
-			var currentCount = pmsg.split(',').length;
-			if(!(pmsg.includes(message.author)) && (currentCount < 42)){
-				pmsg = pmsg.replace(/, ,/g,',') + ', ' + '<@'+message.author+'>';
-				pmsg = pmsg.replace(/,,/g,',');
-				dbmsg.edit(pmsg);
-				currentCount = currentCount+1;
-				await message.react('🔥').then(msgd => {
-					message.author.send("Congrads! u wuz number " + currentCount + "/42. u iz rekorded, my man. U iz gonna getta BLT! DM BTCornBLAIQchnz with yo wallet address!");
-				}).catch(() => {
-					message.channel.send("Yo, u iz haz dem DMs closed or sumthin. DM BTCornBLAIQchnz.");
-				});
-				await message.delete();
-			}else{
-				if(currentCount>42){
-					await message.author.send("Sorry dude, if u iz lookin for dat BLT, me sent out the 42. Der will be more soon, my man.").catch(() => {
-						message.author.send("Yo, u iz haz dem DMs closed or sumthin. I iz out tho.");
-					});
-				}else{
-					await message.delete();
-				}
-			}
-		} */
-
 
 		if(msg.includes('!bid') || msg.includes('!bit') || msg.includes('!biddup') || msg.includes('!override')){
 			var userCanBid = true;
@@ -2136,6 +2093,35 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(reaction.partial) await reaction.fetch();
 	if(user.bot) return;
 	if (!reaction.message.guild) return;
+	try{
+		if(reaction.message.channel.id == auctionchannel){
+			if(reaction.emoji.name === '❌'){
+				var auctionToKill = reaction.message.id;
+				var dbchannel = await client.channels.cache.get(databasechannel);
+				var dbmsg = await dbchannel.messages.fetch(databasemsg);
+				let amsg = amsg.content;
+				var initialmsg = amsg.split(',')[0];
+				var secondmsg = amsg.split(',')[4];
+				if(auctionToKill == initialmsg || auctionToKill == secondmsg){
+					let qUser = reaction.message.embeds[0].fields[0].value;
+					var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
+				}
+
+				if(qUser.includes(user.id) || hasRole){
+					kill = true;  //wonder if deleting the embed message would work, but we'll try kill first	
+					var dbchannel = await client.channels.cache.get(auctionchannel);
+					await client.channels.cache.get(auctionchannel).send('MUrrrrrrdurrrr! I iz killin it!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+				}else{
+					console.log('unauthorized user trying to kill auction');
+					reaction.users.remove(user);
+				}
+			}
+		}
+	}catch(err){
+		console.log(err);
+		reaction.users.remove(user);
+	}
+
 	if(reaction.message.channel.id == queuechannel){
 		if(reaction.emoji.name === '✅'){
 			console.log('Auction Alert Subscriber Added');
