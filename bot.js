@@ -1917,7 +1917,7 @@ if(!startup){
 			var userCanBid = true;
 			if(isSpecialEvent && !(message.member.roles.cache.has(aliE))){userCanBid = false;}
 			
-			if(userCanBid){
+			if(userCanBid && kill == false){
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(databasemsg);
 				let amsg = dbmsg.content;
@@ -2073,11 +2073,15 @@ if(!startup){
 				}
 
 			}else{
-				console.log('ineligible bidder: special event');
-				let sorrybra = await message.reply('Sorry bra, dis iz a limited access event.');
-				await message.delete();
-				await sleep(2000);
-				await sorrybra.delete();
+				if(kill == true){
+					message.reply('No current awkshun, so whatcha bittin on?');
+				}else{
+					console.log('ineligible bidder: special event');
+					let sorrybra = await message.reply('Sorry bra, dis iz a limited access event.');
+					await message.delete();
+					await sleep(2000);
+					await sorrybra.delete();
+				}
 			}	
 		}
 	} catch(err){
@@ -2113,7 +2117,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					var dbchannel = await client.channels.cache.get(auctionchannel);
 					await client.channels.cache.get(auctionchannel).send('MUrrrrrrdurrrr! I iz killin it!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
 				}else{
-					console.log('unauthorized user trying to kill auction');
+					console.log('unauthorized user trying to kill auction: ' + user.id);
 					reaction.users.remove(user);
 				}
 			}
