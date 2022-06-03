@@ -2099,7 +2099,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 				var auctionToKill = reaction.message.id;
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(databasemsg);
-				let amsg = amsg.content;
+				let amsg = dbmsg.content;
 				var initialmsg = amsg.split(',')[0];
 				var secondmsg = amsg.split(',')[4];
 				if(auctionToKill == initialmsg || auctionToKill == secondmsg){
