@@ -740,7 +740,19 @@ async function queueAdd(message){
 
 
 // clear current auction message in database 
+async function killedAuction(){
+	console.log('auction was killed, updating status and dbcontent');
+	client.user.setStatus('online');
+	client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
+	let dbchannel = await client.channels.cache.get(databasechannel);
+	let dbmsg = await dbchannel.messages.fetch(databasemsg);
+	await dbmsg.edit('NO CURRENT AUCTION');
+}
+
+
 async function ClearDatabase(){
+		client.user.setStatus('online');
+		client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
 		let dbchannel = await client.channels.cache.get(databasechannel);
 		let dbmsg = await dbchannel.messages.fetch(databasemsg);
 		await dbmsg.edit('NO CURRENT AUCTION');
@@ -1538,8 +1550,10 @@ if(!startup){
 							console.log('Starting Auction Listener');
 							startup = false
 							do{
+								if(kill == true){await killedAuction();}
 									//if(dbmsg.content == 'NO CURRENT AUCTION'){
 									nextauction = await getNextAuction();
+									if(kill)
 									kill = false; //reset if last auction was killed
 									//if(nextauction == 'live auction'){
 									//console.log('encountered live auction, aborting secondary process.');
@@ -2074,6 +2088,7 @@ if(!startup){
 
 			}else{
 				if(kill == true){
+
 					message.reply('No current awkshun, so whatcha bittin on?');
 				}else{
 					console.log('ineligible bidder: special event');
