@@ -1903,7 +1903,7 @@ if(!startup){
 													{ name: 'SELLER', value: '<@' + sellerid + '>', inline: true },
 													{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
 												)
-												.setFooter({text: 'Report any issues/suggestions via DM to @BTCornBLAIQchnz'})
+												.setFooter({text: 'Report any issues/suggestions to @BTCornBLAIQchnz\naliG.loopring.eth'})
 											let endEmbed = await achan.send({ embeds: [eEmbed] });
 											
 											let endImg = await achan.send({files: [endimage]});
