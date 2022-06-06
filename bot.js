@@ -32,6 +32,7 @@ var timeouts = [];
 const gatewayipfs = 'https://gateway.pinata.cloud';
 const loopringipfs = 'https://loopring.mypinata.cloud';
 const queuelimit = 90;
+const timeBetweenAuctions = 30000;				// delay between auctions in ms
 
 const bitcorn = '416645304830394368';			// bitcorn user id
 const alig = '974143111418765313';				// aliG user id
@@ -74,7 +75,7 @@ const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
 const isLive = true;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
-const dmAlertTime = 15;							// number of minutes before auction to start trying to send alerts 
+const dmAlertTime = 10;							// number of minutes before auction to start trying to send alerts 
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
 
@@ -452,22 +453,26 @@ async function scrape(nfturl, imgattached = false){
 	console.log(nfturl);
 	await page.goto(nfturl);
 	var IMAGE_SELECTOR;
+	var VIDEO_SELECTOR;
 	var TITLE_SELECTOR;
+	var imageHref;
 	var getTitle;
 	var imageTitle;
 	var hasPlaceholder;
 	var placeholder;
-	var gotimage = imgattached
+	var gotTitle = false;
 	
 	if(nfturl.includes('explorer.loopring.io')){
 		//console.log('explorer.loopring.io');
 		IMAGE_SELECTOR = '#__next > main > div > div.pt-12 > div > div > img';
+		VIDEO_SELECTOR = 'n/a';
 		TITLE_SELECTOR = IMAGE_SELECTOR;
 		placeholder = 'nft-placeholder.svg';
 		hasPlaceholder = true;
 	}else if(nfturl.includes('lexplorer.io')){
 		//console.log('lexplorer.io');
 		IMAGE_SELECTOR = '.nft'; //'body > div.mud-layout.mud-drawer-open-responsive-lg-left.mud-drawer-left-clipped-docked > div > div > div.mud-table.mud-simple-table.mud-table-dense.mud-table-bordered.mud-table-striped.mud-elevation-1 > div > table > tbody > tr:nth-child(10) > td > img';
+		VIDEO_SELECTOR = '.nft > source';
 		TITLE_SELECTOR = 'tr:nth-child(1) > td > div > h6'; //"[class='mud-typography mud-typography-h6 mud-inherit-text']";
 		hasPlaceholder = false;
 	}else{
@@ -479,41 +484,64 @@ async function scrape(nfturl, imgattached = false){
 
 	//allow a max of 5 checks
 	var imgcheckcount = 0;
-	while(gotimage == false && imgcheckcount < 6){
+	while(gotTitle == false && imgcheckcount < 6){
 		imgcheckcount++;
-		console.log('Finding Image...');
+		if(imgattached==false){console.log('Finding Image...');}
 		await page.waitForTimeout(3000);
 		console.log('waited for time out');
-		var imageHref = await page.evaluate((sel) => {
-			console.log('returning');
-			var scrapedurl = document.querySelector(sel).getAttribute('src');
-			if(!(scrapedurl.includes(' '))){
-				scrapedurl = encodeURI(scrapedurl);
-				console.log('had to invoke encodeURI');
-			}
-			return scrapedurl;
-		}, IMAGE_SELECTOR);
-console.log('hasPlaceholder: ' + hasPlaceholder);
-		if(hasPlaceholder){
-			if(!(imageHref.includes(placeholder))){getTitle = true;}
-		}else{getTitle = true;}
+		if(imgattached==false){
+			try{
+				console.log('checking for image');
+				imageHref = await page.evaluate((sel) => {
+					console.log('returning');
+					var scrapedurl = document.querySelector(sel).getAttribute('src');
+					if(!(scrapedurl.includes(' '))){
+						scrapedurl = encodeURI(scrapedurl);
+						console.log('had to invoke encodeURI');
+					}
+					return scrapedurl;
+				}, IMAGE_SELECTOR);	
 
-		if(getTitle){
-			console.log('Getting Title...');
-			gotimage = true;
-			if(nfturl.includes('explorer.loopring.io')){
-				imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
-			}else{
-				imageTitle = await page.$eval(TITLE_SELECTOR, el => el.textContent);   //uate((sel) => {return document.querySelector(sel).getProperty('textContent');}, TITLE_SELECTOR)).jsonValue();
+				console.log('hasPlaceholder: ' + hasPlaceholder);
+				if(hasPlaceholder){
+					if(!(imageHref.includes(placeholder))){getTitle = true;}
+				}else{getTitle = true;}
+
+			}catch{
+				console.log('lexplorer likely found a mp4 or other non-supported file, try loopring');
+				IMAGE_SELECTOR = '#__next > main > div > div.pt-12 > div > div > img';
+				TITLE_SELECTOR = IMAGE_SELECTOR;
+				placeholder = 'nft-placeholder.svg';
+				hasPlaceholder = true;
+				getTitle = false;
+				nfturl = nfturl.replace('https://lexplorer.io/nfts/','https://explorer.loopring.io/nft/'); //switch over to loopring to skip mp4 issue
+				await page.goto(nfturl);
+			}}
+
+			if(getTitle){
+				console.log('Getting Title...');
+				if(nfturl.includes('explorer.loopring.io')){
+					imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
+					gotTitle = true;
+				}else{
+					var doCount = 0;
+					imageTitle = await page.$eval(TITLE_SELECTOR, el => el.textContent);   //uate((sel) => {return document.querySelector(sel).getProperty('textContent');}, TITLE_SELECTOR)).jsonValue();
+					if(!(imageTitle.includes('NFT 0x'))){gotTitle = true;}
+				}
+			} else{
+				await page.waitForTimeout(1000);
 			}
-		} else{
-			await page.waitForTimeout(1000);
-		}
-	}
+		}	
+
 	browser.close();
-	if(gotimage == true){
-		imageHref = imageHref.replace(gatewayipfs,loopringipfs);
-		return imageTitle + ',' + imageHref;
+
+	if(gotTitle == true){
+		if(imgattached == true){
+			return imageTitle;	
+		}else{
+			imageHref = imageHref.replace(gatewayipfs,loopringipfs);
+			return imageTitle + ',' + imageHref;	
+		}
 	}else{
 		return 'SCRAPEFAIL';
 	}
@@ -609,16 +637,20 @@ return inputs;
 //add item to queue
 async function queueAdd(message){
 // adding in attachment check
+var bypassImageScrape = false;
 
 	try{
 		var msg = message.content.toLowerCase();
 		var dbchannel = await client.channels.cache.get(databasechannel);
 		var dbmsg = await dbchannel.messages.fetch(queuemsg);
 		let qmsg = dbmsg.content;
+
 		if(qmsg.split(',').length > queuelimit){
-			message.reply('Sorry man, me be cappt at 90 itemz in da Q... Upgraydz cumming soon!!');
+			message.reply('Sorry man, me be cappt at 90 itemz in das blaiQUEUE... Upgraydz cumming soon!!');
 			throw 'avoid 2000 character limit overrun, refuse queue item';
 		}
+
+
 		var inputs;
 		if(msg.includes('!queue')){
 			inputs = msg.replace('!queue','').replace(/\s+/g,'');
@@ -628,49 +660,61 @@ async function queueAdd(message){
 		let arr = new Array();
 		arr = inputs.split(',');
 		
+
 		if (!(isValidURL(arr[0]))){
 			message.reply('Sorry man, dat link u iz wack! Gotta giv it to me wif the http');
 			throw 'Parameter is not a valid url!';
 		}
 		
-		var details = await scrape(arr[0]);
+
+		if(message.type === 'REPLY'){
+			await message.fetchReference().then(repliedTo =>{
+				if(repliedTo.attachments.size > 0){
+					qImg = repliedTo.attachments.first().url;
+					bypassImageScrape = true;
+				}
+			});
+		}else{
+			if(message.attachments.size > 0){
+				qImg = message.attachments.first().url;
+				bypassImageScrape = true;
+			}
+		}
+
+		var details = await scrape(arr[0], bypassImageScrape);
+		console.log('details = ' + details);
+		
 		if(details == 'SCRAPEFAIL'){
-			message.reply('Sumthin be wack... Verify dem inputs and commas... if dat checks, maybe attach dat image.');
+			var failtext = 'Sumthin be wack... Verify dem inputs and commas...';
+			if(bypassImageScrape == false){
+				failtext = failtext + ' if dat checks, maybe attach dat image.';
+			}else{
+				failtext = failtext + " what filetype did you try? (fyi - mp4s currently don't work)";
+			}
+			message.reply(failtext);
 			throw details;
 		}
+		
 		if(details == 'only set up for explorer.loopring.io and lexplorer.io'){
 			message.replay(details);
 			throw details;
 		}
-		var qTitle = details.split(',')[0];
 
-		if(message.type === 'REPLY'){
-			await message.fetchReference().then(repliedTo =>{
-					if(repliedTo.attachments.size > 0){
-						qImg = repliedTo.attachments.first().url;	
-						//console.log(qImg + " from reply attachment");	//if image is in replied message (convert to being in same message)
-					}else{
-						qImg = details.split(',')[1];
-						//console.log(qImg + " from scrape");
-					}
-				}).catch (err =>{
-					console.log(err);
-					//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
-					qImg = details.split(',')[1];
-				});
-			}else{
-				if(message.attachments.size >0){
-					qImg = message.attachments.first().url;
-					//console.log(qImg + " from attachment");
-				} else{
-					qImg = details.split(',')[1];
-					//console.log(qImg + " from scrape");
-				}
-			}
+		var qTitle;
+		
+		if(bypassImageScrape){
+			qTitle = details;
+		}else{
+			qTitle = details.split(',')[0];
+			qImg = details.split(',')[1];
+
 			if(qImg.includes(' ')){
 				qImg = encodeURI(qImg);
 				console.log('had to invoke that encodeURI function.');
 			}
+		}
+
+		console.log(qTitle + ' qtitle ' + bypassImageScrape + ' bypass? ' + details + ' details');
 
 		var qduration = setLength(arr[1]);
 		var qreserve = '0';
@@ -695,8 +739,6 @@ async function queueAdd(message){
 			date = date.getTime() + (qdelay*60*60*1000);
 			qdelay = dateFormat(date, "UTC:mmm d h:MM TT Z"); 
 		}
-
-
 
 			let qEmbed = new MessageEmbed()
 				.setColor(infocolor)
@@ -737,6 +779,11 @@ async function queueAdd(message){
 			return false;
 		}
 }
+
+async function timeToAuction(){
+
+}
+
 
 
 // clear current auction message in database 
@@ -1014,10 +1061,34 @@ const asyncSome = async (arr, predicate) => {
 	return false;
 };
 
+//sort 2d array by first column
+function sortFunction(a, b) {
+    if (a[0] === b[0]) {
+        return 0;
+    }
+    else {
+        return (a[0] < b[0]) ? -1 : 1;
+    }
+}
+
+//sort 2d array by second column
+function compareSecondColumn(a, b) {
+    if (a[1] === b[1]) {
+        return 0;
+    }
+    else {
+        return (a[1] < b[1]) ? -1 : 1;
+    }
+}
+
 
 async function findNext(qmsg){
 	//console.log('finding on deck: ' + qmsg);
 	var qentries = new Array();
+	var qstart = new Array();
+	var qend = new Array();
+	var dmsent = new Array();
+
 		if(qmsg == 'NO QUEUE'){return qmsg;}
 		qmsg = qmsg.replace(/\s+/g, '');
 
@@ -1027,71 +1098,108 @@ async function findNext(qmsg){
 			qentries[0] = qmsg;
 		}
 
-	var qembed;
-	var queueitem;
-	var iSchedule = new Array();
-	var firstItem = true;
-	var iMin = 0;
-	let now = moment();
-	var minTime = moment();
+		var firstItem = true;
+		var currstart;
+		var durationms;
+		var durDay;
+		var durHour;
+		var durMin;
+		var qembed;
+		var queueitem;
 
-	await asyncSome(qentries, async (i) => {
-		
-		var qchannel = await client.channels.cache.get(queuechannel);
-		try{
-
-			if(!(i.includes('dm'))){ //check if message has already had alert
-				queueitem = await qchannel.messages.fetch(i+'');
-				qembed = await queueitem.embeds[0];
-		
-				if(qembed.timestamp == null){
-					minTime = now;
-					if(firstItem){
-						iMin = 0;
-						firstItem=false;
-					}else{
-						iMin++;
-					}
-					iSchedule.push(i);
+		//compute min start time
+		for (var i = 0; i < qentries.length; i++) {
+			var qchannel = await client.channels.cache.get(queuechannel);
+			try{
+				if(qentries[i].includes('dm')){
+					dmsent.push(true);
 				}else{
-					var embedTime = moment(qembed.timestamp);
-					if(firstItem){
-						minTime = embedTime;
-						iMin = 0; //set min next auction as the first entry in the array.
-						iSchedule.push(i);
-	
-						//console.log('current min time:' + minTime);
-						firstItem = false;
-					}else{
-						if(embedTime.isBefore(minTime)){
-							minTime = moment(qembed.timestamp);
-							iMin++;
-							iSchedule.push(i);
-							//console.log('current min time:' + minTime);
-							//console.log('time diff between now and next item in queue: ' + now.diff(qembed.timestamp));
-						}
-					}
+					dmsent.push(false);
 				}
-			}else{
-				console.log('alert already sent for message id: ' + i);				
-			}
-		}catch(err){
-			console.log('had error: ' + err);
-			//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);;
-		}
-	});
+				queueitem = await qchannel.messages.fetch(qentries[i].replace('dm','')+'');
+				qembed = await queueitem.embeds[0];
+				
+				//get intended start time
+					if(qembed.timestamp == null){
+						qstart.push(moment());
+						currstart = moment();
+					}else{
+						qstart.push(moment(qembed.timestamp).valueOf());
+						currstart = moment(qembed.timestamp).valueOf();
+					}
 
-	//insert alert function... 
-	//if time is null or within the specific dmAlertTime variable (in minutes), send alert to seller and those who have tagged with ✅
-	var dmcheck = iSchedule[iMin];
-	//console.log(dmcheck);
-	if(!(dmcheck == undefined)){
-		if(!(dmcheck.includes('dm'))){
-			//console.log('alert time check for: ' + dmcheck);
-			if(minTime.diff(now,"seconds") < dmAlertTime*60 ){
-				await dmAuctionAlerts(dmcheck);
+				//get estimated end if started at intended time
+				durationms = qembed.fields[1].name.replace('DURATION: ','').replace(/\s+/g,'');
+			
+					if(durationms.includes('d')){durDay = parseInt(durationms.split('d')[0]); durationms = durationms.split('d')[1]};
+					if(durationms.includes('h')){durHour = parseInt(durationms.split('h')[0]); durationms = durationms.split('h')[1]};
+					if(durationms.includes(':')){durHour = parseInt(durationms.split(':')[0]); durationms = durationms.split(':')[1]};
+					durMin = parseInt(durationms);
+					durationms = ((+durDay*24 + +durHour)*60 + +durMin)*60000;
+					qend.push(moment(currstart).add(durationms,'ms'));
+					
+			}catch(err){
+				console.log(err);
 			}
 		}
+
+		var auctionInfo = [];
+		for(var i = 0; i < qentries.length; i++){
+			auctionInfo.push({
+				messageID: qentries[i],
+				starttime: qstart[i],
+				endtime: qend[i],
+				dmsent: dmsent[i]
+			});
+		}
+
+	// sort by soonest time an auction can start
+	auctionInfo.sort(compareSecondColumn);
+	var lastend;
+	var currdur;
+	var iStart = moment();
+	var iEnd = moment();
+
+	console.log('Estimating Auction Start Times');
+	for (var i = auctionInfo.length-1; i >= 0; i--) {
+		// capture duration of this auction prior to modifying est. start time
+		iStart = moment(auctionInfo[i].starttime);
+			console.log(auctionInfo[i].messageID);
+			console.log('Start: ' + iStart);
+		iEnd = moment(auctionInfo[i].endtime); 
+			console.log('End: ' + iEnd);
+		
+		currdur = iEnd.diff(iStart,'ms');
+			console.log('Duration (ms): ' + currdur);
+
+		if(i == auctionInfo.length-1){
+			lastend = moment(auctionInfo[i].endtime);
+		} else{
+			//check if this auction is set to start after the end of the prior auction
+			if(lastend.isAfter(iStart)){
+				auctionInfo[i].starttime = moment(lastend).add(timeBetweenAuctions,'ms');
+				iStart = moment(auctionInfo[i].starttime);
+				console.log('Shifted Start: ' + iStart);
+			}
+
+			//adjust the variable lastend to be the anticipated end of this auction
+			lastend = iStart.add(currdur,'ms');
+		}
+
+	}
+	// auction estStart and estEnd should be adjusted now.
+	var now = moment();
+	var dmBefore = moment(now).add(dmAlertTime,'minutes'); //compute now + 10 minutes to know what auctions should have auctions sent out
+
+	console.log('Send Alerts to auctions starting before: ' + dmBefore);
+
+	for (var i = auctionInfo.length-1; i >= 0; i--) {
+		console.log('Checking: ' + auctionInfo[i].messageID + ' (dm sent: ' + auctionInfo[i].dmsent + ')');
+		
+		if(moment(auctionInfo[i].starttime).isBefore(dmBefore) && !(auctionInfo[i].dmsent)){
+			console.log(auctionInfo[i].messageID + ' is ready for DMs');
+			dmAuctionAlerts(auctionInfo[i].messageID); //have alerts sent for queue item if the estimated start is before now + 15 minutes (and dm needs to be sent)
+		}	
 	}
 }
 
@@ -1117,15 +1225,15 @@ async function dmAuctionAlerts(alertMsg) {
 			await seller.send({ embeds: [aEmbed] }).catch(() => {
 				console.log("Unable to alert seller: " + seller.id);
 			});
-			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-			await amsg.react('976603681850003486');	
+			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
+			await amsg.react('976603681850003486').catch(console.log('message was removed - auction may have started'));
 		}
 	}else{
 		await seller.send({ embeds: [aEmbed] }).catch(() => {
 			console.log("Unable to alert seller: " + seller.id);
 		});
-		await amsg.react('976603681850003486');	
 		await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+		await amsg.react('976603681850003486').catch(console.log('message was removed - auction may have started'));	
 	}
 
 	if(reaction.count > 1){
@@ -1668,7 +1776,7 @@ if(!startup){
 								}							
 							}
 	
-							var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup\naliG.loopring.eth';
+							var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup\nhelp command: !help\naliG.loopring.eth';
 							var authormsg = 'NO BIDS YET';
 	
 							let aEmbed = new MessageEmbed()
@@ -1795,7 +1903,7 @@ if(!startup){
 													{ name: 'SELLER', value: '<@' + sellerid + '>', inline: true },
 													{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
 												)
-												.setFooter({text: 'Report any issues/suggestions via DM to @BTCornBLAIQchnz'})
+												.setFooter({text: 'Report any issues/suggestions to @BTCornBLAIQchnz\naliG.loopring.eth'})
 											let endEmbed = await achan.send({ embeds: [eEmbed] });
 											
 											let endImg = await achan.send({files: [endimage]});
@@ -1867,7 +1975,7 @@ if(!startup){
 
 								if(Math.floor(Math.random() * 100) > 50){
 									var hypetop = '[' + auctiontext + '] ' + 'HIGH BID: ' + highbid;
-									var hypefooter = 'bid commands: !bid !bit !biddup\naliG.loopring.eth';
+									var hypefooter = 'bid commands: !bid !bit !biddup\nhelp command: !help\naliG.loopring.eth';
 									let hypeEmbed = new MessageEmbed()
 													.setColor(embedColor)
 													.setAuthor({name: hypetop})
@@ -1897,7 +2005,7 @@ if(!startup){
 					}
 					}	
 
-					await sleep(30000);
+					await sleep(timeBetweenAuctions);
 					nextauction = await getNextAuction();
 					if(nextauction == 'NO QUEUE'){
 						console.log('queue empty');
@@ -1952,7 +2060,9 @@ if(!startup){
 					highbidder = message.author.username.split("#")[0];
 	// made an adjustment here to consider !bid69 (no spaces)
 					bidamount = msg.replace('!biddup','').replace('!bid','').replace('!bit','').replace(/\s+/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');;
-					
+					if(bidamount.length>10){
+						bidamount = bidamount.slice(0,10);
+					}
 					
 					if(msg.includes('!override')){
 						if(message.member.roles.cache.has(puzzlegang)){
@@ -1968,7 +2078,10 @@ if(!startup){
 							 return;
 						}
 					}
-					bidamount = bidamount.replace(/,/g, '');	
+					bidamount = bidamount.replace(/,/g, '');
+					
+					
+
 					let hasLetter = /[a-zA-Z]/.test(bidamount);				
 					let isnum = /^\d+$/.test(bidamount);
 					bid = parseInt(+bidamount);
