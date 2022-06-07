@@ -18,6 +18,7 @@ client.once('ready', () =>{
 	client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
 	clearQueueMsg(); //clear current queue message (will repopulate)
 	ClearDatabase(); //clear current auction message and start listener
+	dailyReset();
 })
 
 client.on('error', console.log)
@@ -448,6 +449,7 @@ var formatTimezone = function formatTimezone(date) {
 /////////////////
 
 // scrape the nft link site to return title and image
+
 async function scrape(nfturl, imgattached = false){
 	console.log('New Queue Item added');
 	const browser = await puppeteer.launch({});
@@ -835,20 +837,35 @@ async function ClearDatabase(){
 		let dbmsg = await dbchannel.messages.fetch(databasemsg);
 		await dbmsg.edit('NO CURRENT AUCTION');
 		await client.channels.cache.get(queuechannel).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+		console.log('Current auction message cleared...');
 	}
 
 async function clearLimitMsg(){
 		let dbchannel = await client.channels.cache.get(databasechannel);
 		let dbmsg = await dbchannel.messages.fetch(limitmsg);
 		await dbmsg.edit('LIMIT RESET');
+		console.log('Limits reset...');
 }
 
 async function clearQueueMsg(){
 	let dbchannel = await client.channels.cache.get(databasechannel);
 	let dbmsg = await dbchannel.messages.fetch(queuemsg);
 	await dbmsg.edit('NO QUEUE');
+	console.log('Queue message cleared...');
 }
 
+function dailyReset() {
+    var now = new Date();
+    var night = now;
+	night.setDate(new Date.getDate()+1);
+	night.setHours(0,0,0);
+    var msToMidnight = night.getTime() - now.getTime();
+
+    setTimeout(function() {
+    	clearLimitMsg();              //      <-- This is the function being called at midnight.
+        resetAtMidnight();    //      Then, reset again next midnight.
+    }, msToMidnight);
+}
 
 // process database message
 function dbCurrent(str, delimiter = ",") {
@@ -1717,7 +1734,7 @@ if(!startup){
 									//console.log(nextauction);
 									//console.log('last queue ping: ' + Date.now());
 									
-									if(nextauction == 'NO QUEUE'){
+									/* if(nextauction == 'NO QUEUE'){
 										var daybefore = moment.utc().dayOfYear();
 										await sleep(15000); //wait 15 seconds 
 										var dayafter = moment.utc().dayOfYear();
@@ -1725,7 +1742,7 @@ if(!startup){
 											clearLimitMsg();
 											console.log('NEW DAY: Limits Reset!');
 										}
-									}
+									} */
 									//}
 									//else{
 									//console.log('encountered live auction, aborting secondary process.');
@@ -2313,7 +2330,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					kill = true;  //wonder if deleting the embed message would work, but we'll try kill first	
 					var dbchannel = await client.channels.cache.get(auctionchannel);
 					await client.channels.cache.get(auctionchannel).send('MUrrrrrrdurrrr! I iz killin it!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
-					
+					await ClearDatabase();
 				}else{
 					console.log('unauthorized user trying to kill auction: ' + user.id);
 					reaction.users.remove(user);
