@@ -164,6 +164,7 @@ const randommsg = (str) => {
 // RESET THESE VALUES WHEN CALLING NEXT AUCTION
 global.seller = "seller";			// NFT SELLER
 global.nfturl = undefined;			// NFT LINK ON EXPLORER
+global.nftdescription = '';			// OPTIONAL DESCRIPTION TEXT
 global.reserve = '0';				// SELLER SET RESERVE
 global.title = "title";				// NFT TITLE
 global.imgurl = undefined;			// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
@@ -664,6 +665,7 @@ return inputs;
 async function queueAdd(message){
 // adding in attachment check
 var bypassImageScrape = false;
+var descriptionText = '';
 
 	try{
 		var msg = message.content.toLowerCase();
@@ -698,6 +700,7 @@ var bypassImageScrape = false;
 				if(repliedTo.attachments.size > 0){
 					qImg = repliedTo.attachments.first().url;
 					bypassImageScrape = true;
+					descriptionText = repliedTo.content;
 				}
 			});
 		}else{
@@ -772,6 +775,7 @@ var bypassImageScrape = false;
 				.setTitle(qTitle)
 				.setURL(arr[0])
 				.setImage(qImg)
+				.setDescription(descriptionText)
 				.addFields(
 					{ name: 'SELLER', value: '<@'+message.author+'>'},
 					{ name: 'DURATION: ' + qduration, value: 'RESERVE: ' + qreserve +' LRC', inline: true},
@@ -1411,6 +1415,7 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	let qurl = await qembed.url;
 	let qimage = await qembed.image.url;
 	let qtitle = await qembed.title;
+	let qdescription = await qembed.description; //added test
 	
 	qimage = qimage.replace(gatewayipfs,loopringipfs);
 	
@@ -1424,7 +1429,8 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	console.log('deleting queueitem and submitting auction details');
 	await queueitem.delete();  //this is causing some issue by deleting too soon...
 	
-	let auctiondetails = qseller + ', ' + qduration + ', ' + qreserve + ', ' + qimage + ', ' + qtitle + ', ' + qurl;
+	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
+	if(qdescription.length > 0){auctiondetails = auctiondetails + ',' + qdescription;}
 	return auctiondetails;
 }
 
@@ -1750,6 +1756,9 @@ if(!startup){
 							imgurl = imgurl.replace(gatewayipfs, loopringipfs);
 							title = auctionDeets[4];		// NFT TITLE
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
+							if(!(auctionDeets[6] == null)){
+								nftdescription = auctionDeets[6];
+							}
 	
 							highbid = '0';					// CURRENT HIGH BID
 							highbidder = "N/A";				// CURRENT HIGH BIDDER
@@ -1830,6 +1839,7 @@ if(!startup){
 								.setColor(embedColor)							
 								.setTitle(title)
 								.setURL(nfturl)
+								.setDescription(nftdescription)
 								.setAuthor({name: authormsg})
 								.setImage(imgurl)
 								.addFields(
@@ -2033,10 +2043,10 @@ if(!startup){
 								let randomhype = randommsg('hype');
 
 								if(Math.floor(Math.random() * 100) > 50){
-									var hypetop = '[' + auctiontext + '] ' + 'HIGH BID: ' + highbid;
+									var hypetop = 'Åuction ╙isting ïnteractive Gangsta';	//'[' + auctiontext + '] ' + 'HIGH BID: ' + highbid;
 									var hypefooter = '\nfor help, type: !help\naliG.loopring.eth';
 									let hypeEmbed = new MessageEmbed()
-													.setColor(embedColor)
+													//.setColor(embedColor)
 													.setAuthor({name: hypetop})
 													.setThumbnail(botimg)
 													.setTitle(title)
