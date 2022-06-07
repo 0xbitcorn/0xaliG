@@ -1914,7 +1914,7 @@ if(!startup){
 											authormsg = authormsg.split('').join(' ');
 											var endmsg = randommsg('end');
 											var endimage;
-											updateEmbed.setTitle(authormsg);
+											updateEmbed.setAuthor(authormsg);
 											updateEmbed.setColor(endcolor);
 											msgembed.edit(new MessageEmbed(updateEmbed));
 											msgembed.edit({embeds: [updateEmbed]});
