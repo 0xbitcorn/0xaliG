@@ -176,6 +176,7 @@ global.priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
 
 global.killauction = false;			// KILL AUCTION TRIGGER
 global.kill = false;				// KILL 2.0
+global.processingDMs = false;		// TO IDENTIFY WHEN PROGRAM IS PROCESSING DMS
 
 
 /////////////////
@@ -516,12 +517,15 @@ async function scrape(nfturl, imgattached = false){
 				getTitle = false;
 				nfturl = nfturl.replace('https://lexplorer.io/nfts/','https://explorer.loopring.io/nft/'); //switch over to loopring to skip mp4 issue
 				await page.goto(nfturl);
-			}}
+			}}else{
+				getTitle = true;
+			}
 
 			if(getTitle){
 				console.log('Getting Title...');
 				if(nfturl.includes('explorer.loopring.io')){
 					imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
+					console.log('imageTitle: ' + imageTitle);
 					gotTitle = true;
 				}else{
 					var doCount = 0;
@@ -573,31 +577,53 @@ change to this when we get more busy
 	if(message.member.roles.cache.has(aliF)){limitCount = 741;maxduration = 5;maxdelay = 24;} //consider making this 48 hrs later and max duration = 15	
 
 //check auction limit first
+	var currNum;
+	var currItem;
+
 	if(lmsg.includes(message.author.id)){
 		let lmsgArray = new Array();
-		lmsgArray = lmsg.split(message.author.id);
-		var currNum;
-		var startofstr = '';
-		if(lmsgArray[0].includes(',')){
+		if(lmsg.includes(',')){
+			lmsgArray= lmsg.split(',');
+		}else{
+			lmsgArray.push(lmsg);
+		}
+
+		for(x=0; x<lmsgArray.length; x++){
+			if(lmsgArray[x].includes(message.author.id)){
+				currNum = parseInt(lmsgArray[x].split(':')[0]);
+				currItem = x;
+				x = lmsgArray.length;
+			}
+		}
+
+/*		var startofstr = '';
+ 		if(lmsgArray[0].includes(',')){
 			currNum = lmsgArray[0].slice(lmsgArray[0].lastIndexOf(','),-1);
-			startofstr = lmsgArray[0].slice(0,-(text.length-lmsgArray[0].lastIndexOf(',')));
+			startofstr = lmsgArray[0].slice(0,-(lmsgArray[0].length-lmsgArray[0].lastIndexOf(',')));
 		}else{
 			currNum = parseInt(lmsgArray[0].slice(0,-1));
 			//console.log('currNum:' + currNum );
 		}
-		if(currNum + 1 > limitCount){
+ */		if(currNum + 1 > limitCount){
 			return '[LIMIT REACHED] 24 hour auction limit: ' + limitCount;
 		}else{
-			currNum = +currNum + 1;
+
+			if(currNum > 0){
+				lmsgArray[currItem] = (currNum + 1) + ':' + message.author.id;
+			}
+
+/* 			currNum = +currNum + 1;
 			if(startofstr == ''){
 				lmsg = currNum + ':' + message.author.id + lmsgArray[1];
 			}else{
 				lmsg = startofstr + ',' + currNum + ':' + message.author.id + lmsgArray[1];
 			}
+ */			
+			lmsg = lmsgArray.join(',');
 			console.log(lmsg);
 		}
 	}else{
-		if(lmsg = 'LIMIT RESET'){
+		if(lmsg == 'LIMIT RESET'){
 			lmsg = '1:' + message.author.id; 
 		}else{
 			lmsg = lmsg + ',1:' + message.author.id;
@@ -715,6 +741,7 @@ var bypassImageScrape = false;
 		}
 
 		console.log(qTitle + ' qtitle ' + bypassImageScrape + ' bypass? ' + details + ' details');
+		//gets here... and has a struggle.... then hops into performing queue message validation check.
 
 		var qduration = setLength(arr[1]);
 		var qreserve = '0';
@@ -753,7 +780,7 @@ var bypassImageScrape = false;
 				)
 			if(!(qdelay == 'N/A')){
 				qEmbed.setTimestamp(date);
-				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)\nSCHEDULED AUCTION '});
+				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)\nAUCTION SCHEDULED FOR '});
 			}else{
 				qEmbed.setFooter({text: '✅ to subscribe to auction alert (BUYERS)\n❌ to remove from the queue (SELLER/ADMIN)'});
 			}
@@ -1188,13 +1215,13 @@ async function findNext(qmsg){
 
 	}
 	// auction estStart and estEnd should be adjusted now.
-	var now = moment();
-	var dmBefore = moment(now).add(dmAlertTime,'minutes'); //compute now + 10 minutes to know what auctions should have auctions sent out
+	//var now = moment();
+	var dmBefore = moment().add(dmAlertTime,'minutes'); //compute now + 10 minutes to know what auctions should have auctions sent out
 
 	console.log('Send Alerts to auctions starting before: ' + dmBefore);
 
 	for (var i = auctionInfo.length-1; i >= 0; i--) {
-		console.log('Checking: ' + auctionInfo[i].messageID + ' (dm sent: ' + auctionInfo[i].dmsent + ')');
+		console.log('Checking: ' + auctionInfo[i].messageID + ' Start Time: '+ auctionInfo[i].starttime + ' (buyer dms sent?: ' + auctionInfo[i].dmsent + ') time difference: ' + moment(auctionInfo[i].starttime).diff(dmBefore,'ms'));
 		
 		if(moment(auctionInfo[i].starttime).isBefore(dmBefore) && !(auctionInfo[i].dmsent)){
 			console.log(auctionInfo[i].messageID + ' is ready for DMs');
@@ -1204,59 +1231,69 @@ async function findNext(qmsg){
 }
 
 async function dmAuctionAlerts(alertMsg) {
-	console.log('Sending DM alerts for: ' + alertMsg);
-	var qchannel = await client.channels.cache.get(queuechannel);
-	var amsg = await qchannel.messages.fetch(alertMsg);
-	var reaction = await amsg.reactions.cache.get('✅');
-	var users = await reaction.users.fetch();
-	var sellerEmoji = await amsg.reactions.cache.get('976603681850003486');
-	var sellerDMd = false;
+processingDMs = true;
+	try{
+		console.log('Processing DM alerts for: ' + alertMsg);
+		var qchannel = await client.channels.cache.get(queuechannel);
+		var amsg = await qchannel.messages.fetch(alertMsg);
+		var reaction = await amsg.reactions.cache.get('✅');
+		var users = await reaction.users.fetch();
+		var sellerEmoji = await amsg.reactions.cache.get('976603681850003486');
+		var sellerDMd = false;
+		var skipdms = false;
+		
+		var aEmbed = await amsg.embeds[0];
+		await aEmbed.setThumbnail(soonImg);
+		await aEmbed.setFooter({text:'aliG.loopring.eth'});
+		await aEmbed.setTimestamp('');
+		var qseller = aEmbed.fields[0].value;
+		qseller = qseller.replace('<@','').replace('>','');
+		const seller = await client.users.fetch(qseller).catch(console.error);
 	
-	var aEmbed = await amsg.embeds[0];
-	await aEmbed.setThumbnail(soonImg);
-	var qseller = aEmbed.fields[0].value;
-	qseller = qseller.replace('<@','').replace('>','');
-	const seller = await client.users.fetch(qseller).catch(console.error);
-
-	//check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
-	if(!(sellerEmoji == undefined)){
-		var sellerCheck = await sellerEmoji.users.fetch();
-		if(!(sellerCheck.has(alig))){
+		//check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
+		if(!(sellerEmoji == undefined)){
+			var sellerCheck = await sellerEmoji.users.fetch();
+			if(!(sellerCheck.has(alig))){
+				await seller.send({ embeds: [aEmbed] }).catch(() => {
+					console.log("Unable to alert seller: " + seller.id);
+				});
+				await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
+				await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});
+			}
+		}else{
 			await seller.send({ embeds: [aEmbed] }).catch(() => {
 				console.log("Unable to alert seller: " + seller.id);
 			});
-			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
-			await amsg.react('976603681850003486').catch(console.log('message was removed - auction may have started'));
+			await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+			await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});	
 		}
-	}else{
-		await seller.send({ embeds: [aEmbed] }).catch(() => {
-			console.log("Unable to alert seller: " + seller.id);
-		});
-		await seller.send('Yo, my main man! Yer awkshun iz startin SOON! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-		await amsg.react('976603681850003486').catch(console.log('message was removed - auction may have started'));	
-	}
-
-	if(reaction.count > 1){
-	users.each(async(user) =>{
-		if(!(user.id == alig)){
-			await user.send({ embeds: [aEmbed] }).catch(() => {
-					console.log("User has DMs closed or no mutual servers: " + user.id);
-				});
-				await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-				await reaction.users.remove(user);
-				console.log('DM sent to: ' + user.id);
-			}	
-	});
-	var dbchannel = await client.channels.cache.get(databasechannel);
-	var dbmsg = await dbchannel.messages.fetch(queuemsg);
-	var qmsg = dbmsg.content;
-	console.log(alertMsg);
-	qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
-	await dbmsg.edit(qmsg);
-}
 	
-
-
+		if(!(skipdms)){
+			if(reaction.count > 1){
+				users.each(async(user) =>{
+					if(!(user.id == alig)){
+						await user.send({ embeds: [aEmbed] }).catch(() => {
+								console.log("User has DMs closed or no mutual servers: " + user.id);
+							});
+							await user.send('👆👆 STARTING SOON, YO!!! 🔥🔥🔥\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+							await reaction.users.remove(user);
+							console.log('DM sent to: ' + user.id);
+						}	
+				});
+				var dbchannel = await client.channels.cache.get(databasechannel);
+				var dbmsg = await dbchannel.messages.fetch(queuemsg);
+				var qmsg = dbmsg.content;
+				console.log(alertMsg);
+				qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
+				await dbmsg.edit(qmsg);
+			}
+		}else{
+			console.log('dm processing for users was skipped.');
+		}
+	}catch{
+		console.log('auction item was likely made live during processing');
+	}
+	processingDMs = false;
 }
 
 
@@ -1378,7 +1415,13 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	
 	// add these when ready to go live //
 	await dbmsg.edit(qmsg);
-	await queueitem.delete();
+	while(processingDMs){
+		await sleep(10000);
+		console.log('waiting for DM process to finish');
+	}
+
+	console.log('deleting queueitem and submitting auction details');
+	await queueitem.delete();  //this is causing some issue by deleting too soon...
 	
 	let auctiondetails = qseller + ', ' + qduration + ', ' + qreserve + ', ' + qimage + ', ' + qtitle + ', ' + qurl;
 	return auctiondetails;
@@ -1621,7 +1664,7 @@ if(!startup){
 	}
 
 	if(msg.includes('!queue') || msg.includes('!auction')){
-		var addedtoqueue = queueAdd(message);
+		var addedtoqueue = await queueAdd(message);
 		if(addedtoqueue){await message.react('976603681850003486');}
 		if(!(addedtoqueue)){await message.react('❌');}
 	}
@@ -1652,8 +1695,6 @@ if(!startup){
 	}} else{
 		(async() => {
 			do{		
-					if(!startup){console.log('nextauction: ' + nextauction);}
-						
 					if(startup){
 							console.log('Starting Auction Listener');
 							startup = false
@@ -1661,8 +1702,7 @@ if(!startup){
 								if(kill == true){await killedAuction();}
 									//if(dbmsg.content == 'NO CURRENT AUCTION'){
 									nextauction = await getNextAuction();
-									if(kill)
-									kill = false; //reset if last auction was killed
+									if(kill){kill = false;} //reset if last auction was killed
 									//if(nextauction == 'live auction'){
 									//console.log('encountered live auction, aborting secondary process.');
 									//break;
@@ -1704,7 +1744,7 @@ if(!startup){
 								minutes = parseInt(duration.split('m')[0]);
 							reserve = auctionDeets[2];		// SELLER SET RESERVE
 							imgurl = auctionDeets[3];		// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
-							console.log('imgurl: ' + imgurl);
+							//console.log('imgurl: ' + imgurl);
 							imgurl = imgurl.replace(/\s+/g,'');
 							imgurl = imgurl.replace(gatewayipfs, loopringipfs);
 							title = auctionDeets[4];		// NFT TITLE
@@ -1728,7 +1768,8 @@ if(!startup){
 								.setTitle('['+ auctiontext + ' STARTED]')
 								.setAuthor({name: authormsg})
 								.setDescription(descript)
-								.setThumbnail(botimg);
+								.setThumbnail(botimg)
+								.setFooter({text: 'bid commands: !bid, !bit, !biddup [for help: !help]'});
 								//.setFooter({text: 'SELLER: ' + seller });
 								let achan = await client.channels.cache.get(auctionchannel);
 								let introEmbed = achan.send({ embeds: [iEmbed] });
@@ -1775,8 +1816,13 @@ if(!startup){
 									timeleft = minsleft + " min";
 								}							
 							}
-	
-							var footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nbid commands: !bid !bit !biddup\nhelp command: !help\naliG.loopring.eth';
+							var footertxt;
+							if(isLive){
+								footertxt = 'SELLER: ' + seller +'\nfor help, type: !help\naliG.loopring.eth';
+							}else{
+								footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nfor help, type: !help\naliG.loopring.eth';
+							}
+							
 							var authormsg = 'NO BIDS YET';
 	
 							let aEmbed = new MessageEmbed()
@@ -1868,7 +1914,7 @@ if(!startup){
 											authormsg = authormsg.split('').join(' ');
 											var endmsg = randommsg('end');
 											var endimage;
-											
+											updateEmbed.setTitle(authormsg);
 											updateEmbed.setColor(endcolor);
 											msgembed.edit(new MessageEmbed(updateEmbed));
 											msgembed.edit({embeds: [updateEmbed]});
@@ -1878,12 +1924,14 @@ if(!startup){
 												titlemsg = 'HIGH BID = ' + winningbid + ' LRC';
 												titlemsg = titlemsg.split('').join(' ');
 												endimage = randommsg('imgend');
+
 												if(+winningbid < +reserve){
 													authormsg = '>>>RESERVE NOT MET (' + reserve + ' LRC)';
 													endmsg = "Well shit... we ain't git over dat reserve. I'll let you figz dis one out.";
 													endimage = 'https://i.gifer.com/76Gy.gif';
+												}else{
+													await achan.send('Yo! ' + winningbidder + ' DM my main man <@' + seller + '> and cordinate dat swapskis!');
 												}
-	
 											} else{
 												winningbidder = 'Sum wak shiz! No bits';
 												titlemsg = 'NO BIDS, NO SALE';
@@ -1921,6 +1969,16 @@ if(!startup){
 	
 										if(timeleft == "ENDED"){
 											updateEmbed.setColor(endcolor);
+											let dbchannel = await client.channels.cache.get(databasechannel);
+											let dbmsg = await dbchannel.messages.fetch(databasemsg);
+											let amsg = dbmsg.content;
+											var updatemsg = amsg.split(',')[4];
+											if(!(updatemsg == 'N/A')){
+												let chan = await client.channels.cache.get(auctionchannel); 
+												let secondMessage = await chan.messages.fetch(updatemsg);
+												secondMessage.edit(new MessageEmbed(updateEmbed));
+												secondMessage.edit({embeds: [updateEmbed]});
+											}
 											//iEmbed.setColor(endcolor);
 											//introEmbed.edit(new MessageEmbed(iEmbed));
 											//introEmbed.edit({embeds: [iEmbed]});
@@ -1975,7 +2033,7 @@ if(!startup){
 
 								if(Math.floor(Math.random() * 100) > 50){
 									var hypetop = '[' + auctiontext + '] ' + 'HIGH BID: ' + highbid;
-									var hypefooter = 'bid commands: !bid !bit !biddup\nhelp command: !help\naliG.loopring.eth';
+									var hypefooter = '\nfor help, type: !help\naliG.loopring.eth';
 									let hypeEmbed = new MessageEmbed()
 													.setColor(embedColor)
 													.setAuthor({name: hypetop})
@@ -2244,6 +2302,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					kill = true;  //wonder if deleting the embed message would work, but we'll try kill first	
 					var dbchannel = await client.channels.cache.get(auctionchannel);
 					await client.channels.cache.get(auctionchannel).send('MUrrrrrrdurrrr! I iz killin it!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+					
 				}else{
 					console.log('unauthorized user trying to kill auction: ' + user.id);
 					reaction.users.remove(user);
