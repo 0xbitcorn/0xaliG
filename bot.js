@@ -1192,12 +1192,12 @@ async function findNext(qmsg){
 		// capture duration of this auction prior to modifying est. start time
 		iStart = moment(auctionInfo[i].starttime);
 			console.log(auctionInfo[i].messageID);
-			console.log('Start: ' + iStart);
+			console.log('Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		iEnd = moment(auctionInfo[i].endtime); 
-			console.log('End: ' + iEnd);
+			console.log('End: ' + moment(iEnd).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		
 		currdur = iEnd.diff(iStart,'ms');
-			console.log('Duration (ms): ' + currdur);
+			console.log('Duration (min): ' + moment(currdur).minutes());
 
 		if(i == auctionInfo.length-1){
 			lastend = moment(auctionInfo[i].endtime);
@@ -1206,7 +1206,7 @@ async function findNext(qmsg){
 			if(lastend.isAfter(iStart)){
 				auctionInfo[i].starttime = moment(lastend).add(timeBetweenAuctions,'ms');
 				iStart = moment(auctionInfo[i].starttime);
-				console.log('Shifted Start: ' + iStart);
+				console.log('Shifted Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 			}
 
 			//adjust the variable lastend to be the anticipated end of this auction
@@ -1218,7 +1218,7 @@ async function findNext(qmsg){
 	//var now = moment();
 	var dmBefore = moment().add(dmAlertTime,'minutes'); //compute now + 10 minutes to know what auctions should have auctions sent out
 
-	console.log('Send Alerts to auctions starting before: ' + dmBefore);
+	console.log('Send Alerts to auctions starting before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 
 	for (var i = auctionInfo.length-1; i >= 0; i--) {
 		console.log('Checking: ' + auctionInfo[i].messageID + ' Start Time: '+ auctionInfo[i].starttime + ' (buyer dms sent?: ' + auctionInfo[i].dmsent + ') time difference: ' + moment(auctionInfo[i].starttime).diff(dmBefore,'ms'));
@@ -1290,7 +1290,8 @@ processingDMs = true;
 		}else{
 			console.log('dm processing for users was skipped.');
 		}
-	}catch{
+	}catch(err){
+		console.log(err);
 		console.log('auction item was likely made live during processing');
 	}
 	processingDMs = false;
@@ -1930,7 +1931,7 @@ if(!startup){
 													endmsg = "Well shit... we ain't git over dat reserve. I'll let you figz dis one out.";
 													endimage = 'https://i.gifer.com/76Gy.gif';
 												}else{
-													await achan.send('Yo! ' + winningbidder + ' DM my main man <@' + seller + '> and cordinate dat swapskis!');
+													await achan.send('Yo! ' + winningbidder + ' DM my main man <@' + sellerid + '> and cordinate dat swapskis!');
 												}
 											} else{
 												winningbidder = 'Sum wak shiz! No bits';
