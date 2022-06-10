@@ -1280,7 +1280,7 @@ async function findNext(qmsg){
 			console.log('Is Before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 			if(!(auctionInfo[i].dmsent)){
 				console.log('Processing existing Buyer DMs');
-				dmAuctionAlerts(auctionInfo[i].messageID); //have alerts sent for queue item if the estimated start is before now + 15 minutes (and dm needs to be sent)
+				await dmAuctionAlerts(auctionInfo[i].messageID); //have alerts sent for queue item if the estimated start is before now + 15 minutes (and dm needs to be sent)
 			}else{
 				console.log('No Buyer DMs to send');
 			}
