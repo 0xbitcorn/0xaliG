@@ -814,8 +814,28 @@ var descriptionText = '';
 		}
 }
 
-async function timeToAuction(){
+async function setMessageValue (_messageID, _targetedChannel) {
+    let foundMessage = new String();
+	var setChannel = await client.channels.cache.get(_targetedChannel);
+    
+    // Check if the message contains only numbers (Beacause ID contains only numbers)
+    if (!Number(_messageID)) return 'FAIL_ID=NAN';
 
+    // Check if the Message with the targeted ID is found from the Discord.js API
+    try {
+        await Promise.all([setChannel.messages.fetch(_messageID)]);
+    } catch (error) {
+        // Error: Message not found
+        if (error.code == 10008) {
+            console.error('Failed to find the message! Setting value to error message...');
+            foundMessage = 'FAIL_ID';
+        }
+    } finally {
+        // If the type of variable is string (Contains an error message inside) then just return the fail message.
+        if (typeof foundMessage == 'string') return foundMessage;
+        // Else if the type of the variable is not a string (beacause is an object with the message props) return back the targeted message object.
+        return setChannel.messages.fetch(_messageID);
+    }
 }
 
 
@@ -1278,11 +1298,18 @@ async function findNext(qmsg){
 		console.log('Start: '+ moment(auctionInfo[i].starttime).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		if(moment(auctionInfo[i].starttime).isBefore(dmBefore)){
 			console.log('Is Before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
-			if(!(auctionInfo[i].dmsent)){
-				console.log('Processing existing Buyer DMs');
-				await dmAuctionAlerts(auctionInfo[i].messageID); //have alerts sent for queue item if the estimated start is before now + 15 minutes (and dm needs to be sent)
+			var now = moment();
+			if(moment(now).isAfter(auctionInfo[i].starttime)){
+							// start this auction.
 			}else{
-				console.log('No Buyer DMs to send');
+				if(!(auctionInfo[i].dmsent)){
+					console.log('Processing existing Buyer DMs');
+					
+					await dmAuctionAlerts(auctionInfo[i].messageID); //have alerts sent for queue item if the estimated start is before now + 15 minutes (and dm needs to be sent)
+				
+				}else{
+					console.log('No Buyer DMs to send');
+				}
 			}
 		}
 	}
@@ -1326,8 +1353,12 @@ async function dmAuctionAlerts(alertMsg) {
 processingDMs = true;
 	try{
 		console.log('Processing DM alerts for: ' + alertMsg);
-		var qchannel = await client.channels.cache.get(queuechannel);
-		var amsg = await qchannel.messages.fetch(alertMsg);
+		var amsg = await setMessageValue(alertMsg,queuechannel);
+		if (typeof amsg === 'string' || amsg instanceof String){
+			throw amsg;
+		}
+		//var qchannel = await client.channels.cache.get(queuechannel);
+		//var amsg = await qchannel.messages.fetch(alertMsg);
 		var reaction = await amsg.reactions.cache.get('🟡');
 		var users = await reaction.users.fetch();
 		var sellerEmoji = await amsg.reactions.cache.get('976603681850003486');
@@ -1372,9 +1403,15 @@ processingDMs = true;
 							console.log('DM sent to: ' + user.id);
 						}	
 				});
-				var dbchannel = await client.channels.cache.get(databasechannel);
-				var dbmsg = await dbchannel.messages.fetch(queuemsg);
+
+				var dbmsg = await setMessageValue(queuemsg,databasechannel);
+				if (typeof dbmsg === 'string' || dbmsg instanceof String){
+					throw dbmsg;
+				}
+				//var dbchannel = await client.channels.cache.get(databasechannel);
+				//var dbmsg = await dbchannel.messages.fetch(queuemsg);
 				var qmsg = dbmsg.content;
+				
 				console.log(alertMsg);
 				qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
 				await dbmsg.edit(qmsg);
@@ -1421,7 +1458,7 @@ async function getNextAuction() {
 				//console.log('fetching msg: ' + i);
 				queueitem = await qchannel.messages.fetch(i.replace('dm',''));
 				qembed = await queueitem.embeds[0];
-
+				console.log('embed timestamp: ' + qembed.timestamp);
 				if(qembed.timestamp == null){
 					itemselected = i;
 					return true;}
@@ -1478,6 +1515,7 @@ async function getNextAuction() {
 				console.log('NEW DAY: Limits Reset!');
 			}
 			console.log('Listening for new queue items...');
+			console.log(itemselected);
 		}
 
 	}while(itemselected == 'N/A');
@@ -1494,7 +1532,6 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	}
 
 	
-	
 	let qseller = await qembed.fields[0].value;
 	let qduration = await qembed.fields[1].name.replace('DURATION: ','');
 	//console.log('qduration: '+ qduration);
@@ -1508,20 +1545,24 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	qimage = qimage.replace(gatewayipfs,loopringipfs);
 	
 	// add these when ready to go live //
-	await dbmsg.edit(qmsg);
+	console.log('Pushing current auction details to database');
+	
+	console.log('Initiating Start Alert');
 	await dmAuctionStart(queueitem.id); 	//sending go time alert
 
 	while(processingDMs){
-		await sleep(10000);
+		await sleep(1000);
 		console.log('waiting for DM process to finish');
 	}
 
-	console.log('deleting queueitem and submitting auction details');
+	console.log('deleting queueitem and entry from database');
 	await queueitem.delete().catch(console.log('queueitem.delete(): queue item not found.'));
+	await dbmsg.edit(qmsg);
 
 	//having an issue here and with the dmAuctionStart (cache issue... message seems to be deleted too soon)
 	//await queueitem.delete().catch(console.log('queueitem.delete(): queue item not found.'));
 	
+	console.log('Submitting auction details...');
 	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
 	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
 	return auctiondetails;
@@ -2038,8 +2079,12 @@ if(!startup){
 												)
 												.setFooter({text: 'Report any issues/suggestions to @BTCornBLAIQchnz\naliG.loopring.eth'})
 											let endEmbed = await achan.send({ embeds: [eEmbed] });
+											try{
+												let endImg = await achan.send({files: [endimage]});
+											}catch(error){
+												console.log("Error: " + error);
+											}
 											
-											let endImg = await achan.send({files: [endimage]});
 										
 										//dbmsg.edit('NO CURRENT AUCTION');
 										//client.user.setStatus('online');
