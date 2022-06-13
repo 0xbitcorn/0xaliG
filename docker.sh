@@ -25,7 +25,7 @@ EOF
 run() {
     case $1 in
         temp) opt="-it --rm";;
-        *) opt="-d --restart unless-stopped";;
+        *) opt="-d --restart always";;
     esac
     docker run $opt --init --cap-add=SYS_ADMIN --name $name -v $auth:/usr/src/app/auth.json $name node -e "`cat bot.js`"
 }
