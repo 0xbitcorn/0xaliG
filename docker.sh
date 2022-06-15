@@ -43,6 +43,7 @@ case $1 in
         docker build -t $name . &&
         docker stop $name >/dev/null
         docker rm $name >/dev/null
+        sleep 3
         run
     ;;
     start) run;;
