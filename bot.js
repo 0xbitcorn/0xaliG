@@ -2452,25 +2452,33 @@ if(!startup){
 						} else if(bid == 180){
 							bidmsg = bidmsg + '\n *wicka wicka 180... turn dis beat right round!*';
 						} else if(bid == 222){
-							bidmsg = bidmsg + '\n *luv dem twos, yo! Respek!*';
+							bidmsg = bidmsg + '\n *luv dem twos! Layers, yo! Respek!*';
 						} else if(bid == 350){
 							bidmsg = bidmsg + '\n *I aint no god damn nessie, but ill take dat tree fitty!*';
 						} else if(bid == 420){
 							bidmsg = bidmsg + '\n *yo, dat reminz me. time fo me medication*';
 						} else if(bid == 421){
 							bidmsg = bidmsg + '\n *I call this my ***close enuff puff***';
-						}else if(bid == 666){
+						} else if(bid == 456){
+							bidmsg = bidmsg + '\n *Yo! ow bout 789??';
+						} else if(bid == 666){
 							bidmsg = bidmsg + '\n *ooO, me cousin Rhonda haz dat tattoo. She a beast.*';
 						} else if(bid == 741){
 							bidmsg = bidmsg + '\n *yo, RC dat u?*';
+						} else if(bid == 789){
+							bidmsg = bidmsg + '\n *u be counting! countin on no one to out bit ya!*';
 						} else if(bid == 808){
 							bidmsg = bidmsg + '\n *we gotz that 808 bump!*';
 						} else if(bid == 828){
 							bidmsg = bidmsg + '\n *828.. RIDE OR DIE...*';
+						} else if(bid == 1000){
+							bidmsg = bidmsg + '\n *Ow wheez talkin!*';
 						} else if(bid == 1111){
 							bidmsg = bidmsg + '\n *Yo, me Julie... 1111... makum dem wishz...';
 						} else if(bid == 1337){
 							bidmsg = bidmsg + '\n *b00y4k0rn5h4!*';
+						} else if(bid == 2020){
+							bidmsg = bidmsg + '\n *yo! Dat year sucked major goat sack! quick! bump it!*';
 						} else if(bid == 9001){
 							bidmsg = bidmsg + '\n *OVER 9000!!! BOOYAKORNSHA!*';
 						} else if(bid == 80085){
