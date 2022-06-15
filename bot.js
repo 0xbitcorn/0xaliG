@@ -76,7 +76,7 @@ const limitmsg = '980668627030278194';			// limit message for monitoring post am
 const livecolor = '#00ab66';					// embed color when live
 const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
-const isLive = false;							// true = live; false = maintenance
+const isLive = true;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
 const dmAlertTime = 10;							// number of minutes before auction to start trying to send alerts 
 const antiSnipe = 15000;						// antisnipe add
