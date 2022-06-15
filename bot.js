@@ -1500,7 +1500,7 @@ async function getNextAuction() {
 					qmsg = qmsg.replace(/\s+/g, '');
 					var endsWithNum = false;
 
-					//temporarily removing this...
+					//temporarily removing this....
 					/* do{
 						endsWithNum = isNaN(qmsg.slice(-1)) ? false : true;
 						if(!(endsWithNum)){
