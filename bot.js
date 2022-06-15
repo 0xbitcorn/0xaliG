@@ -16,9 +16,9 @@ client.once('ready', () =>{
 	console.log('Connected!')
 	client.user.setStatus('online');
 	client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
-	clearQueueMsg(); //clear current queue message (will repopulate)
-	ClearDatabase(); //clear current auction message and start listener
-	//dailyReset();
+	clearQueueMsg(); // clear current queue message (will repopulate)
+	ClearDatabase(); // clear current auction message and start listener
+	//dailyReset();	 // invokes a daily reset of the limits
 })
 
 client.on('error', console.log)
@@ -34,6 +34,7 @@ const gatewayipfs = 'https://gateway.pinata.cloud';
 const loopringipfs = 'https://loopring.mypinata.cloud';
 const queuelimit = 90;
 const timeBetweenAuctions = 30000;				// delay between auctions in ms
+const timeBetweenQueueCheck = 15000;			// delay between queue checks in ms (for next auction grab)
 
 const bitcorn = '416645304830394368';			// bitcorn user id
 const alig = '974143111418765313';				// aliG user id
@@ -50,6 +51,7 @@ const pauseuntil = moment(1654185600000);		// pause nextauction until input time
 const puzzlegang = '970758538681012315';		// puzzlegang role
 const kernalcommander = '970723355097444482';	// kernalcommander role
 const wingman = '970760443113111582';			// wingman role
+const creators = '979349639880929351';			// creator role
 
 /*initial thoughts on role limitations
 Ali A - 3 auctions postings per day, 5 min max duration (max scheduling out 4 hours)
@@ -64,7 +66,7 @@ const aliB = '980661146887536700';				// auction role
 const aliC = '980663646453649468';				// auction role
 const aliD = '980663669476196392';				// auction role
 const aliE = '979840380851879996';				// for special Events
-const aliF = '976887843915964447';				// creators auction role
+const aliF = '976887843915964447';				// auction fanatic role
 
 const databasemsg = '975836495606849686'; 		// database message
 const prizemsg = '977234646578376724'; 			// prize message
@@ -74,9 +76,10 @@ const limitmsg = '980668627030278194';			// limit message for monitoring post am
 const livecolor = '#00ab66';					// embed color when live
 const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
-const isLive = true;							// true = live; false = maintenance
+const isLive = false;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
 const dmAlertTime = 10;							// number of minutes before auction to start trying to send alerts 
+const antiSnipe = 15000;						// antisnipe add
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
 
@@ -110,7 +113,8 @@ const auction_hype=[
 "me want sum chicken nuggets bout as much as i wan a bid",
 "puff puff bid!",
 "RESPEK! biddup yo self!",
-"Shout out to my main man, carl. He da best! love you carl!"
+"Shout out to my main man, carl. He da best! love you carl!",
+"if u iz enjoyin diz, feel free to send some loops over (aliG.loopring.eth) I'll take me Julie out for some chicken nuggies."
 ]
 
 // bot end messages
@@ -163,6 +167,7 @@ const randommsg = (str) => {
 //////////////////////
 
 // RESET THESE VALUES WHEN CALLING NEXT AUCTION
+global.auctionEnded = true;			// AUCTION STATUS (SET TO FALSE WHEN NEW AUCTION STARTS)
 global.seller = "seller";			// NFT SELLER
 global.nfturl = undefined;			// NFT LINK ON EXPLORER
 global.nftdescription = '';			// OPTIONAL DESCRIPTION TEXT
@@ -179,6 +184,9 @@ global.priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
 global.killauction = false;			// KILL AUCTION TRIGGER
 global.kill = false;				// KILL 2.0
 global.processingDMs = false;		// TO IDENTIFY WHEN PROGRAM IS PROCESSING DMS
+global.lastAlertCheck = moment();	// USE THIS TO AVOID CHECKING 10 MIN HEADS UP ALERTS TOO OFTEN
+global.sniperIdentified = false;
+
 
 
 /////////////////
@@ -488,7 +496,7 @@ async function scrape(nfturl, imgattached = false){
 
 	//allow a max of 5 checks
 	var imgcheckcount = 0;
-	while(gotTitle == false && imgcheckcount < 6){
+	while(gotTitle == false && imgcheckcount < 11){
 		imgcheckcount++;
 		if(imgattached==false){console.log('Finding Image...');}
 		await page.waitForTimeout(3000);
@@ -529,11 +537,11 @@ async function scrape(nfturl, imgattached = false){
 				if(nfturl.includes('explorer.loopring.io')){
 					imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
 					console.log('imageTitle: ' + imageTitle);
-					gotTitle = true;
+					if(!(imageTitle == null)){gotTitle = true;} 
 				}else{
 					var doCount = 0;
 					imageTitle = await page.$eval(TITLE_SELECTOR, el => el.textContent);   //uate((sel) => {return document.querySelector(sel).getProperty('textContent');}, TITLE_SELECTOR)).jsonValue();
-					if(!(imageTitle.includes('NFT 0x'))){gotTitle = true;}
+					if(!(imageTitle.includes('NFT 0x')) || !(imageTitle == null)){gotTitle = true;}
 				}
 			} else{
 				await page.waitForTimeout(1000);
@@ -571,13 +579,16 @@ change to this when we get more busy
 	var limitCount = 10;	// default to Ali D role (max 7 auctions per day)
 	var maxduration = 5;	// default to Ali D role (5 min max duration)
 	var maxdelay = 24;		// default to Ali D role (max scheduling out 24 hours) 
-	
+
+
 	//find user's auction limit (uncomment B and C when we get more busy)
 	//if(message.member.roles.cache.has(aliB)){limitCount = 5;maxdelay = 8;}
 	//if(message.member.roles.cache.has(aliC)){limitCount = 7;maxdelay = 24;}
 	if(message.member.roles.cache.has(aliD)){limitCount = 10;maxdelay = 24;} //consider making this 48 hrs later
 	//Ali E for special events only
-	if(message.member.roles.cache.has(aliF)){limitCount = 741;maxduration = 5;maxdelay = 24;} //consider making this 48 hrs later and max duration = 15	
+	if(message.member.roles.cache.has(aliF)){limitCount = 741;maxduration = 5;maxdelay = 24;} 		//consider making this 48 hrs later and max duration = 15	
+	if(message.member.roles.cache.has(creators)){limitCount = 741;maxduration = 5;maxdelay = 48;} 	//consider making this 48 hrs later and max duration = 15	
+
 
 //check auction limit first
 	var currNum;
@@ -702,8 +713,8 @@ var descriptionText = '';
 				if(repliedTo.attachments.size > 0){
 					qImg = repliedTo.attachments.first().url;
 					bypassImageScrape = true;
-					descriptionText = repliedTo.content;
 				}
+				descriptionText = repliedTo.content;
 			});
 		}else{
 			if(message.attachments.size > 0){
@@ -753,7 +764,7 @@ var descriptionText = '';
 		if (!(typeof arr[2] === 'undefined')){qreserve = arr[2];}
 		var qdelay = 'N/A';
 		if (!(typeof arr[3] === 'undefined')){qdelay = arr[3];}
-		if(!(message.author.id == bitcorn)){
+		if(!(message.member.roles.cache.has(creators))){
 		var limiters = await limitCheck(message, qduration, qdelay);
 		if(limiters.includes('[LIMIT REACHED]')){
 			message.reply(limiters);
@@ -880,8 +891,8 @@ async function clearQueueMsg(){
 }
 
 function dailyReset() {
-    var now = new Date();
-    var night = now;
+    var now = moment();
+    var night = moment();
 	night.setDate(new Date().getDate()+1);
 	night.setHours(0,0,0);
     var msToMidnight = night.getTime() - now.getTime();
@@ -1000,8 +1011,8 @@ async function fetchMore(channel, limit = 250) {
 
 
 
-async function queuemsgcheck(){
-	console.log('Performing Queue Message Validation Check');
+async function queuemsgcheck(firstpass = true){
+	if(firstpass){console.log('Performing Queue Message Validation Check');}
 	//load up queue db msg
 	var qupdated = false;
 	var dbchannel = await client.channels.cache.get(databasechannel);
@@ -1036,7 +1047,7 @@ async function queuemsgcheck(){
 	}
 
 	list.forEach(async (msg) => {
-		console.log(msg.id);
+		//console.log(msg.id);
 
 		//check time posted + delay and order by that
 		//compute anticipated time before auction
@@ -1104,11 +1115,11 @@ async function queuemsgcheck(){
 		  await dbmsg.edit(qmsg);
 	  }
 
-	  console.log('Processing Auction Alerts');
+	  if(firstpass){console.log('Processing Auction Alerts');}
 	  dbchannel = await client.channels.cache.get(databasechannel);
 	  dbmsg = await dbchannel.messages.fetch(queuemsg);
 	  qmsg = dbmsg.content;
-	  await findNext(qmsg);
+	  await findNext(qmsg, firstpass);
 
 }
 
@@ -1156,7 +1167,7 @@ function compareStartTimes(a, b) {
 }
 
 
-async function findNext(qmsg){
+async function findNext(qmsg, firstpass = true){
 	//console.log('finding on deck: ' + qmsg);
 	var qentries = new Array();
 	var qstart = new Array();
@@ -1228,8 +1239,7 @@ async function findNext(qmsg){
 		}
 
 	// sort by soonest time an auction can start
-	console.log('auction info prior to sort:');
-	console.log(JSON.stringify(auctionInfo));
+	// need to make sure auctions are sorted first by time input <<<<<<
 	auctionInfo.sort(function(a,b){
 		var startA = moment(a.starttime);
 		var endA = moment(a.endtime);
@@ -1252,25 +1262,25 @@ async function findNext(qmsg){
 		}
 		return 0;
 	});
-	console.log('auction info after sort:');
-	console.log(JSON.stringify(auctionInfo));
+
+
 	
 	var lastend;
 	var currdur;
 	var iStart = moment();
 	var iEnd = moment();
 
-	console.log('Estimating Auction Start Times');
+	if(firstpass){console.log('Estimating Auction Start Times');}
 	for (var i = 0; i < auctionInfo.length; i++) {
 		// capture duration of this auction prior to modifying est. start time
 		iStart = moment(auctionInfo[i].starttime);
-			console.log(auctionInfo[i].messageID);
-			console.log('Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+			//console.log(auctionInfo[i].messageID);
+			//console.log('Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		iEnd = moment(auctionInfo[i].endtime); 
-			console.log('End: ' + moment(iEnd).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+			//console.log('End: ' + moment(iEnd).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		
 		currdur = iEnd.diff(iStart,'ms');
-			console.log('Duration (min): ' + moment(currdur).minutes());
+			//console.log('Duration (min): ' + moment(currdur).minutes());
 
 		if(i == 0){
 			lastend = moment(auctionInfo[i].endtime);
@@ -1279,7 +1289,7 @@ async function findNext(qmsg){
 			if(lastend.isAfter(iStart)){
 				auctionInfo[i].starttime = moment(lastend).add(timeBetweenAuctions,'ms');
 				iStart = moment(auctionInfo[i].starttime);
-				console.log('Shifted Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+				//console.log('Shifted Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 			}
 
 			//adjust the variable lastend to be the anticipated end of this auction
@@ -1287,23 +1297,26 @@ async function findNext(qmsg){
 		}
 
 	}
+
+	if(firstpass){console.log('Adjusted Auction Start Times');} // JSON.stringify(auctionInfo));}
+
 	// auction estStart and estEnd should be adjusted now.
 	//var now = moment();
 	var dmBefore = moment().add(dmAlertTime,'minutes'); //compute now + 10 minutes to know what auctions should have auctions sent out
 
-	console.log('>>Send Alerts to auctions starting before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+	//console.log('>>Send Alerts to those starting before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 
 	for (var i = 0; i < auctionInfo.length; i++) {
-		console.log('[Checking: ' + auctionInfo[i].messageID + ']');
-		console.log('Start: '+ moment(auctionInfo[i].starttime).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+		//console.log('[Checking: ' + auctionInfo[i].messageID + ']');
+		//console.log('Start: '+ moment(auctionInfo[i].starttime).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		if(moment(auctionInfo[i].starttime).isBefore(dmBefore)){
-			console.log('Is Before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+			//console.log('Is Before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 			var now = moment();
 			if(moment(now).isAfter(auctionInfo[i].starttime)){
 							// start this auction.
 			}else{
-				if(!(auctionInfo[i].dmsent)){
-					console.log('Processing existing Buyer DMs');
+				if(!(auctionInfo[i].dmsent) && !(auctionInfo[i].messageID == "NO CURRENT AUCTION")){
+					console.log('Processing existing Buyer DMs for ' + auctionInfo[i].messageID);
 					
 					await dmAuctionAlerts(auctionInfo[i].messageID); //have alerts sent for queue item if the estimated start is before now + 15 minutes (and dm needs to be sent)
 				
@@ -1350,80 +1363,87 @@ async function dmAuctionStart(alertMsg){
 }
 
 async function dmAuctionAlerts(alertMsg) {
-processingDMs = true;
-	try{
-		console.log('Processing DM alerts for: ' + alertMsg);
-		var amsg = await setMessageValue(alertMsg,queuechannel);
-		if (typeof amsg === 'string' || amsg instanceof String){
-			throw amsg;
-		}
-		//var qchannel = await client.channels.cache.get(queuechannel);
-		//var amsg = await qchannel.messages.fetch(alertMsg);
-		var reaction = await amsg.reactions.cache.get('🟡');
-		var users = await reaction.users.fetch();
-		var sellerEmoji = await amsg.reactions.cache.get('976603681850003486');
-		var sellerDMd = false;
-		var skipdms = false;
-		
-		var aEmbed = await amsg.embeds[0];
-		await aEmbed.setThumbnail(soonImg);
-		await aEmbed.setFooter({text:'aliG.loopring.eth'});
-		await aEmbed.setTimestamp('');
-		var qseller = aEmbed.fields[0].value;
-		qseller = qseller.replace('<@','').replace('>','');
-		const seller = await client.users.fetch(qseller).catch(console.error);
 	
-		//check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
-		if(!(sellerEmoji == undefined)){
-			var sellerCheck = await sellerEmoji.users.fetch();
-			if(!(sellerCheck.has(alig))){
+	var alertdelay = moment().subtract(1, 'minute');
+	if(moment(lastAlertCheck).isBefore(alertdelay)){		//if the last alert check was more than a minute ago, allow another check
+		processingDMs = true;
+		lastAlertCheck = moment();
+		try{
+			console.log('Processing DM alerts for: ' + alertMsg);
+			var amsg = await setMessageValue(alertMsg,queuechannel);
+			if (typeof amsg === 'string' || amsg instanceof String){
+				throw amsg;
+			}
+			//var qchannel = await client.channels.cache.get(queuechannel);
+			//var amsg = await qchannel.messages.fetch(alertMsg);
+			var reaction = await amsg.reactions.cache.get('🟡');
+			var users = await reaction.users.fetch();
+			var sellerEmoji = await amsg.reactions.cache.get('976603681850003486');
+			var sellerDMd = false;
+			var skipdms = false;
+			
+			var aEmbed = await amsg.embeds[0];
+			await aEmbed.setThumbnail(soonImg);
+			await aEmbed.setFooter({text:'aliG.loopring.eth'});
+			await aEmbed.setTimestamp('');
+			var qseller = aEmbed.fields[0].value;
+			qseller = qseller.replace('<@','').replace('>','');
+			const seller = await client.users.fetch(qseller).catch(console.error);
+		
+			//check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
+			if(!(sellerEmoji == undefined)){
+				var sellerCheck = await sellerEmoji.users.fetch();
+				if(!(sellerCheck.has(alig))){
+					await seller.send({ embeds: [aEmbed] }).catch(() => {
+						console.log("Unable to alert seller: " + seller.id);
+					});
+					await seller.send('Yo, my main man! Yer awkshun iz in bout ~10 mins! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
+					await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});
+				}
+			}else{
 				await seller.send({ embeds: [aEmbed] }).catch(() => {
 					console.log("Unable to alert seller: " + seller.id);
 				});
-				await seller.send('Yo, my main man! Yer awkshun iz in bout ~10 mins! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
-				await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});
+				await seller.send('Yo, my main man! Yer awkshun iz in bout ~10 mins! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+				await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});	
 			}
-		}else{
-			await seller.send({ embeds: [aEmbed] }).catch(() => {
-				console.log("Unable to alert seller: " + seller.id);
-			});
-			await seller.send('Yo, my main man! Yer awkshun iz in bout ~10 mins! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-			await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});	
-		}
+		
+			if(!(skipdms)){
+				if(reaction.count > 1){
+					users.each(async(user) =>{
+						if(!(user.id == alig)){
+							await user.send({ embeds: [aEmbed] }).catch(() => {
+									console.log("User has DMs closed or no mutual servers: " + user.id);
+								});
+								await user.send('🟡 ~10 MIN HEADS UP 🟡\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+								await reaction.users.remove(user).catch(console.log('error removing user reaction: 10 MIN ALERT'));
+								console.log('DM sent to: ' + user.id);
+							}	
+					});
 	
-		if(!(skipdms)){
-			if(reaction.count > 1){
-				users.each(async(user) =>{
-					if(!(user.id == alig)){
-						await user.send({ embeds: [aEmbed] }).catch(() => {
-								console.log("User has DMs closed or no mutual servers: " + user.id);
-							});
-							await user.send('🟡 ~10 MIN HEADS UP 🟡\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-							await reaction.users.remove(user).catch(console.log('error removing user reaction: 10 MIN ALERT'));
-							console.log('DM sent to: ' + user.id);
-						}	
-				});
-
-				var dbmsg = await setMessageValue(queuemsg,databasechannel);
-				if (typeof dbmsg === 'string' || dbmsg instanceof String){
-					throw dbmsg;
+					var dbmsg = await setMessageValue(queuemsg,databasechannel);
+					if (typeof dbmsg === 'string' || dbmsg instanceof String){
+						throw dbmsg;
+					}
+					//var dbchannel = await client.channels.cache.get(databasechannel);
+					//var dbmsg = await dbchannel.messages.fetch(queuemsg);
+					var qmsg = dbmsg.content;
+					
+					console.log(alertMsg);
+					qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
+					await dbmsg.edit(qmsg);
 				}
-				//var dbchannel = await client.channels.cache.get(databasechannel);
-				//var dbmsg = await dbchannel.messages.fetch(queuemsg);
-				var qmsg = dbmsg.content;
-				
-				console.log(alertMsg);
-				qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
-				await dbmsg.edit(qmsg);
+			}else{
+				console.log('dm processing for users was skipped.');
 			}
-		}else{
-			console.log('dm processing for users was skipped.');
+		}catch(err){
+			console.log(err);
+			console.log('auction item was likely made live during processing');
+			processingDMs = false;
 		}
-	}catch(err){
-		console.log(err);
-		console.log('auction item was likely made live during processing');
+		processingDMs = false;
 	}
-	processingDMs = false;
+
 }
 
 
@@ -1431,9 +1451,10 @@ processingDMs = true;
 // grab details for next auction
 async function getNextAuction() { 
 	var dbchannel = await client.channels.cache.get(databasechannel);
+	var firstpass = true;
 	do{
 		//validate queue message entries and update if needed
-		await queuemsgcheck();
+		await queuemsgcheck(firstpass);
 
 		var dbmsg = await dbchannel.messages.fetch(queuemsg);
 		var qmsg = dbmsg.content;
@@ -1458,7 +1479,7 @@ async function getNextAuction() {
 				//console.log('fetching msg: ' + i);
 				queueitem = await qchannel.messages.fetch(i.replace('dm',''));
 				qembed = await queueitem.embeds[0];
-				console.log('embed timestamp: ' + qembed.timestamp);
+				//console.log('embed timestamp: ' + qembed.timestamp);
 				if(qembed.timestamp == null){
 					itemselected = i;
 					return true;}
@@ -1506,16 +1527,22 @@ async function getNextAuction() {
 			}
 		});
 
-		if(itemselected == 'N/A'){
-			var daybefore = moment.utc().dayOfYear();
-			await sleep(15000); //wait 15 seconds 
-			var dayafter = moment.utc().dayOfYear();
-			if(!(daybefore == dayafter)){
-				clearLimitMsg();
-				console.log('NEW DAY: Limits Reset!');
-			}
-			console.log('Listening for new queue items...');
-			console.log(itemselected);
+		//if(itemselected == 'N/A'){
+		//	var daybefore = moment.utc().dayOfYear();
+		//	await sleep(15000); //wait 15 seconds 
+		//	var dayafter = moment.utc().dayOfYear();
+		//	if(!(daybefore == dayafter)){
+		//		clearLimitMsg();
+		//		console.log('NEW DAY: Limits Reset!');
+		//	}
+		//	console.log('Listening for new queue items...');
+		//	console.log(itemselected);
+		//}
+
+		if(itemselected =='N/A'){
+			firstpass = false;
+			console.log('no auction found, checking again in 10 seconds...');
+			await sleep(timeBetweenQueueCheck);
 		}
 
 	}while(itemselected == 'N/A');
@@ -1664,6 +1691,12 @@ var startup = false;
 		console.log('Startup Message Sent');
 		await message.delete();
 		startup = true;
+		var achan = await client.channels.cache.get(auctionchannel);
+		if(isLive){
+			achan.setName('💰▪auction-haus').catch(console.error);
+		} else{
+			achan.setName('🚧▪testing-haus').catch(console.error);
+		}
 	}else{
 		// check if the author is a bot and quit if so (unless in the queuechannel ==> for triggering the initial cache)	
 		if(message.author.bot && !(message.channel.id == queuechannel)) return;
@@ -1718,10 +1751,20 @@ if(!startup){
 				message.reply(pmsg.split(',').length + '/42');
 			} */
 
-			if(msg.includes('!reset')){
+			if(msg.includes('!clear')){
 				await clearLimitMsg();
 				await ClearDatabase();
 				await clearQueueMsg();
+			}
+
+			if(msg.includes('!reset')){
+				await clearLimitMsg();
+			}
+
+			if(msg.includes('!limit')){
+				console.log('starting daily reset...');
+				dailyReset();
+				console.log('daily reset started...');
 			}
 
 			//scrape information from website
@@ -1777,6 +1820,35 @@ if(!startup){
 			}
 		}
 	}
+
+
+	if(msg.includes('good bot')){
+		message.reply("yo damn right!");
+		message.react('💚');
+	}
+
+	if(msg == '!win'){
+		message.reply("man, i wish dat Ow lif workt...");
+		message.react('💚');
+	}
+
+	if(msg == '!tip'){
+		var tipimage = 'https://cdn.discordapp.com/attachments/962059766937567254/986479798991867984/aliG.gif';
+		await achan.send("BIGGUP YO SELF!", {files: [tipimage]});
+		message.react('💚');
+	}
+
+	if(msg.includes('chicken')){
+		message.react('🍗');
+	}
+
+	if(msg.includes('high')){
+		message.react('🪁');
+	};
+
+	if(msg.includes('bad bot')){
+		message.react('🖕');
+	};
 
 	if(msg == '!help'){
 		var helptext = "<a:BOOYAKASHA:976603681850003486> **[Åuction ╙isting ïnteractive Gangsta]** <a:BOOYAKASHA:976603681850003486>\n> *For more information, including how to submit items for auction, see the pinned message in the auction haus channel.*\n> *<https://discord.com/channels/962059766388101301/974014169483452436/981783418117451816>*\n**BID COMMANDS** <:AWWYISS:963859479135416360>\n> `!bid`, `!bit`, and `!biddup`\n> All commands do the same thing, just different options for fun\n> Follow command with the bid amount in LRC\n> EXAMPLE: `!bid 69` would submit a bid of 69 LRC\n\n**THE QUEUE** <:NFT:964673439849922560>\n> Once an item is submitted, it goes to the auction-queue channel to await its turn.\n> If it's a scheduled auction, the time it's scheduled for is located at the bottom of the embed.\n> \n> *NEED TO REMOVE YOUR ITEM?*\n> Use the :red_circle: emoji\n> FYI: Only admin or the actual seller can remove an item\n> \n> *WANT AN ALERT WHEN AUCTION STARTS?*\n> Use the :green_circle:  emoji\n> *WHAT ABOUT ONE TEN MINUTES EARLIER?*\n> Use the :yellow_circle:  emoji> FYI: Sellers automatically get alerts for their own auctions";
@@ -1898,6 +1970,7 @@ if(!startup){
 								let achan = await client.channels.cache.get(auctionchannel);
 								let introEmbed = achan.send({ embeds: [iEmbed] });
 								achan.send('Yo! <@' + sellerid + '>... u iz up!!! Lez do dis!');
+								auctionEnded = false;
 
 							//save intro id and update embed color
 							
@@ -1977,7 +2050,11 @@ if(!startup){
 															
 					while(duration > 0 && killauction == false){
 								if(kill == true){duration = 0; nextupdate = 0;}			
-									await sleep(nextupdate);			
+									await sleep(nextupdate);
+								var dbchannel = await client.channels.cache.get(databasechannel);
+								var dbmsg = await dbchannel.messages.fetch(databasemsg);
+								let amsg = dbmsg.content;			
+								if(amsg == 'NO CURRENT AUCTION'){ kill = true}; //if we find the database message to be blank, kill the auction
 								if(kill == true){duration = 0; nextupdate = 0;}
 								else{
 									var dbchannel = await client.channels.cache.get(databasechannel);
@@ -1994,6 +2071,10 @@ if(!startup){
 									let updateEmbed = await msgembed.embeds[0];
 									
 									duration = duration - nextupdate;
+									if(duration > 10000){
+										sniperIdentified = false;	//clearing any bids that aren't actually snipers
+									}
+
 									if(duration >= 3*60000){ //more than 2 minutes
 										nextupdate = duration % 60000 + 60000;
 									} else if(duration > 69000){ //between 1 and 2 minutes
@@ -2014,7 +2095,12 @@ if(!startup){
 										chan.send('15 SEX!!!');
 										nextupdate = 5000;
 									} else { //last 10 seconds
-										nextupdate = 1000;
+										if(sniperIdentified && !(auctionEnded)){
+											duration = antiSnipe;
+											sniperIdentified = false;
+											chan.send('SNIPER IDENTIFIED!!! BIT BATTLE!!! (bumping up to 15 SEX!)');
+										}
+											nextupdate = 1000;
 									}
 									hoursleft = Math.floor(duration /(60*60*1000));
 									minsleft = Math.floor((duration - (hoursleft*60*60*1000))/(60*1000)); 
@@ -2028,7 +2114,8 @@ if(!startup){
 											timeleft = "<1 min";
 										}
 									} else {
-										if(duration == 0){
+
+										if(duration == 0 && !(sniperIdentified)){
 											dbmsg = await dbchannel.messages.fetch(databasemsg);
 											amsg = dbmsg.content;
 											var winningbid = amsg.split(',')[1];	// should this be pulled from database or left to global
@@ -2066,7 +2153,7 @@ if(!startup){
 												endimage = 'https://c.tenor.com/Dv1u3wqjGfIAAAAC/boring-bored.gif';
 											}
 											timeleft = "ENDED";
-																					
+
 											let eEmbed = new MessageEmbed()
 												.setColor(endcolor)
 												.setTitle(titlemsg)
@@ -2078,7 +2165,8 @@ if(!startup){
 													{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
 												)
 												.setFooter({text: 'Report any issues/suggestions to @BTCornBLAIQchnz\naliG.loopring.eth'})
-											let endEmbed = await achan.send({ embeds: [eEmbed] });
+												auctionEnded = true;
+												let endEmbed = await achan.send({ embeds: [eEmbed] });
 											try{
 												let endImg = await achan.send({files: [endimage]});
 											}catch(error){
@@ -2089,13 +2177,18 @@ if(!startup){
 										//dbmsg.edit('NO CURRENT AUCTION');
 										//client.user.setStatus('online');
 										//client.user.setActivity('Fantasia', {type: 'WATCHING'});
-	
 										
 										} else{
 												timeleft = '<1 min';
 										}
-									}	
-										
+
+										if((duration < 10000) && sniperIdentified && !(auctionEnded)){
+											duration = antiSnipe;
+											sniperIdentified = false;
+											chan.send('SNIPER IDENTIFIED!!! BIT BATTLE!!! (bumping up to 15 SEX!)');
+											nextupdate = 1000;
+										}
+									}	 
 	
 										if(timeleft == "ENDED"){
 											updateEmbed.setColor(endcolor);
@@ -2237,13 +2330,13 @@ if(!startup){
 			var userCanBid = true;
 			if(isSpecialEvent && !(message.member.roles.cache.has(aliE))){userCanBid = false;}
 			
-			if(userCanBid && kill == false){
+			if(userCanBid && kill == false && !(auctionEnded)){
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(databasemsg);
 				let amsg = dbmsg.content;
 				let isOverride = false;
 
-				if(amsg != 'NO CURRENT AUCTION'){
+				if(!(amsg == 'NO CURRENT AUCTION') && !(auctionEnded)){
 					if(!(client.user.presence.status == 'dnd')){
 						client.user.setStatus('dnd');
 						client.user.setActivity('bids (LIVE)', {type: 'LISTENING'});
@@ -2278,7 +2371,7 @@ if(!startup){
 					}
 					bidamount = bidamount.replace(/,/g, '');
 					
-					
+
 
 					let hasLetter = /[a-zA-Z]/.test(bidamount);				
 					let isnum = /^\d+$/.test(bidamount);
@@ -2287,7 +2380,7 @@ if(!startup){
 						var decimalbid = true; 
 					}
 
-				if(+bid > +highbid && +bid < 1374513896 && !(hasLetter)){
+				if(+bid > +highbid && +bid < 1374513896 && !(hasLetter) && !(auctionEnded)){
 
 					let chan = await client.channels.cache.get(auctionchannel); 
 					let msgembed = await chan.messages.fetch(startmsg);
@@ -2322,7 +2415,7 @@ if(!startup){
 						if(msg.includes('!override')){
 							bidmsg = 'Yo, check it... I set dat bid at ' + bid + ' for my man ' + highbidder + '. Now youze keep droppin dem bits!'
 							dbSet(undefined, bid, highbidder); //, undefined, undefined ,undefined);
-						}else{
+						}else if(!(auctionEnded)){
 							bidmsg = '[NEW HIGH BID] ' + bid +' LRC by <@' + message.author + '>';
 							dbSet(undefined, bid, message.author); //, undefined, undefined ,undefined);
 						}
@@ -2370,6 +2463,8 @@ if(!startup){
 							bidmsg = bidmsg + '\n *we gotz that 808 bump!*';
 						} else if(bid == 828){
 							bidmsg = bidmsg + '\n *828.. RIDE OR DIE...*';
+						} else if(bid == 1111){
+							bidmsg = bidmsg + '\n *Yo, me Julie... 1111... makum dem wishz...';
 						} else if(bid == 1337){
 							bidmsg = bidmsg + '\n *b00y4k0rn5h4!*';
 						} else if(bid == 9001){
@@ -2377,7 +2472,10 @@ if(!startup){
 						} else if(bid == 80085){
 							bidmsg = bidmsg + '\n *dem iz titties. Hopes u be akfordin dat!*';
 						}
-						message.reply(bidmsg);
+						if(!(auctionEnded)){
+							message.reply(bidmsg);
+							sniperIdentified = true;
+						}
 					} 
 					
 					
@@ -2398,7 +2496,7 @@ if(!startup){
 				}
 
 			}else{
-				if(kill == true){
+				if(kill == true || auctionEnded){
 					message.reply('No current awkshun, so whatcha bittin on?');
 				}else{
 					console.log('ineligible bidder: special event');
