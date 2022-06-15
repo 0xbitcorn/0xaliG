@@ -1499,13 +1499,15 @@ async function getNextAuction() {
 					console.log('qmsg: ' + qmsg)
 					qmsg = qmsg.replace(/\s+/g, '');
 					var endsWithNum = false;
-					do{
+
+					//temporarily removing this...
+					/* do{
 						endsWithNum = isNaN(qmsg.slice(-1)) ? false : true;
 						if(!(endsWithNum)){
 							qmsg = qmsg.slice(0,-1);
 							console.log('trimmed last character from qmsg: ' + qmsg);
 						}
-					}while(endsWithNum)
+					}while(endsWithNum) */
 
 					if(qmsg == i || qmsg == 'dm'+i){
 						console.log('qmsg removing via method 1');
@@ -2445,6 +2447,8 @@ if(!startup){
 							bidmsg = bidmsg + '\n *1 point TWENTY ONE GIGGAWEEDZ*';
 						} else if(bid == 123){
 							bidmsg = bidmsg + '\n *noice countin my man... wanna try 456 now?*';
+						} else if(bid == 151){
+							bidmsg = bidmsg + '\n *ya know, me Julie once drank a fifth of 151 and let me do some things... like play me sega*';
 						} else if(bid == 180){
 							bidmsg = bidmsg + '\n *wicka wicka 180... turn dis beat right round!*';
 						} else if(bid == 222){
