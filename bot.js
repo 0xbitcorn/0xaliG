@@ -716,7 +716,7 @@ var descriptionText = '';
 					qImg = repliedTo.attachments.first().url;
 					bypassImageScrape = true;
 				}
-				descriptionText = repliedTo.content;
+				descriptionText = repliedTo.content.replace(',','¸');
 				if(descriptionText.includes('!auction') || descriptionText.includes('!queue')){descriptionText = '';}
 				if(descriptionText.length > maxDescChars){descriptionText = descriptionText.substring(0,maxDescChars-1);}
 				
