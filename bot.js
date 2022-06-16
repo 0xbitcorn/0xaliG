@@ -718,7 +718,7 @@ var descriptionText = '';
 				}
 				descriptionText = repliedTo.content;
 				if(descriptionText.includes('!auction') || descriptionText.includes('!queue')){descriptionText = '';}
-				if(descriptionText.length > maxDescChars){descriptionText = descriptionText.substring(0,maxDescChars);}
+				if(descriptionText.length > maxDescChars){descriptionText = descriptionText.substring(0,maxDescChars-1);}
 				
 			});
 		}else{
