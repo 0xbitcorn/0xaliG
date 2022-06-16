@@ -78,7 +78,7 @@ const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
 const isLive = true;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
-const dmAlertTime = 10;							// number of minutes before auction to start trying to send alerts 
+const dmAlertTime = 5;							// number of minutes before auction to start trying to send alerts 
 const antiSnipe = 15000;						// antisnipe add
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
@@ -174,7 +174,7 @@ global.nftdescription = '';			// OPTIONAL DESCRIPTION TEXT
 global.reserve = '0';				// SELLER SET RESERVE
 global.title = "title";				// NFT TITLE
 global.imgurl = undefined;			// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
-global.currentAuctionDuration = 0;	// CURRENT AUCTION DURATION USED FOR KNOWING WHEN 10 MIN UPDATES SHOULD BE SENT
+global.currentAuctionDuration = 0;	// CURRENT AUCTION DURATION USED FOR KNOWING WHEN HEADS UP ALERTS SHOULD BE SENT
 
 global.highbid = '0';				// CURRENT HIGH BID
 global.highbidder = "N/A";			// CURRENT HIGH BIDDER
@@ -185,7 +185,7 @@ global.priorbidder = "N/A";			// PREVIOUS HIGH BIDDER
 global.killauction = false;			// KILL AUCTION TRIGGER
 global.kill = false;				// KILL 2.0
 global.processingDMs = false;		// TO IDENTIFY WHEN PROGRAM IS PROCESSING DMS
-global.lastAlertCheck = moment();	// USE THIS TO AVOID CHECKING 10 MIN HEADS UP ALERTS TOO OFTEN
+global.lastAlertCheck = moment();	// USE THIS TO AVOID CHECKING HEADS UP ALERTS TOO OFTEN
 global.sniperIdentified = false;
 
 
@@ -802,12 +802,12 @@ var descriptionText = '';
 				)
 			if(!(qdelay == 'N/A')){
 				qEmbed.setTimestamp(date);
-				qEmbed.setFooter({text: '🟢 Auction Start Alert\n🟡 10 Min Heads Up\n🔴 Remove (SELLER/ADMIN ONLY)\nAPPROX START >>> '}); 
+				qEmbed.setFooter({text: '🟢 Auction Start Alert\n🟡 ' + dmAlertTime + ' Min Heads Up\n🔴 Remove (SELLER/ADMIN ONLY)\nAPPROX START >>> '}); 
 				//WITHOUT DOT WILL SIGNIFY SCHEDULED JUST TO PROVIDE VISUAL CLUE FOR EARLY TESTING
 			}else{
 				var now = moment();
 				qEmbed.setTimestamp(now);
-				qEmbed.setFooter({text: '🟢 Auction Start Alert\n🟡 10 Min Heads Up\n🔴 Remove (SELLER/ADMIN ONLY)\nAPPROX. START >>> '});
+				qEmbed.setFooter({text: '🟢 Auction Start Alert\n🟡 ' + dmAlertTime + ' Min Heads Up\n🔴 Remove (SELLER/ADMIN ONLY)\nAPPROX. START >>> '});
 			}
 				
 			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
@@ -1337,7 +1337,7 @@ async function findNext(qmsg, firstpass = true){
 
 	// auction estStart and estEnd should be adjusted now.
 	//var now = moment();
-	var dmBefore = moment().add(dmAlertTime,'minutes').add(currentAuctionDuration,'milliseconds'); //compute now + 10 minutes + current auction length to know what auctions should have auctions sent out
+	var dmBefore = moment().add(dmAlertTime,'minutes').add(currentAuctionDuration,'milliseconds'); //compute now + heads up amount + current auction length to know what auctions should have auctions sent out
 
 	//console.log('>>Send Alerts to those starting before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 
@@ -1432,14 +1432,14 @@ async function dmAuctionAlerts(alertMsg) {
 					await AlertSeller.send({ embeds: [aEmbed] }).catch(() => {
 						console.log("Unable to alert seller: " + AlertSeller.id);
 					});
-					await AlertSeller.send('Yo, my main man! Yer awkshun iz in bout ~10 mins! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
+					await AlertSeller.send('Yo, my main man! Yer awkshun iz startin soon! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436> \n > If u needa cancel it, go tag one of da embed messages wif a :x:').catch(() => {});
 					await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});
 				}
 			}else{
 				await AlertSeller.send({ embeds: [aEmbed] }).catch(() => {
 					console.log("Unable to alert seller: " + AlertSeller.id);
 				});
-				await AlertSeller.send('Yo, my main man! Yer awkshun iz in bout ~10 mins! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+				await AlertSeller.send('Yo, my main man! Yer awkshun iz startin soon! Lez sling dis dope shit!\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
 				await amsg.react('976603681850003486').catch(() => {console.log('message was removed - auction may have started'); skipdms = true;});	
 			}
 		
@@ -1450,8 +1450,8 @@ async function dmAuctionAlerts(alertMsg) {
 							await user.send({ embeds: [aEmbed] }).catch(() => {
 									console.log("User has DMs closed or no mutual servers: " + user.id);
 								});
-								await user.send('🟡 ~10 MIN HEADS UP 🟡\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-								await reaction.users.remove(user).catch(console.log('error removing user reaction: 10 MIN ALERT'));
+								await user.send('🟡 HEADS UP ALERT 🟡\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
+								await reaction.users.remove(user).catch(console.log('error removing user reaction: HEADS UP ALERT'));
 								console.log('DM sent to: ' + user.id);
 							}	
 					});
