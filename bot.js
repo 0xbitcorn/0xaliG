@@ -174,6 +174,7 @@ global.nftdescription = '';			// OPTIONAL DESCRIPTION TEXT
 global.reserve = '0';				// SELLER SET RESERVE
 global.title = "title";				// NFT TITLE
 global.imgurl = undefined;			// IMG URL (STATIC => LINK TO NFT EXPLORER; ANIMATED => LINK TO DISCORD ATTACHMENT)
+global.currentAuctionDuration = 0;	// CURRENT AUCTION DURATION USED FOR KNOWING WHEN 10 MIN UPDATES SHOULD BE SENT
 
 global.highbid = '0';				// CURRENT HIGH BID
 global.highbidder = "N/A";			// CURRENT HIGH BIDDER
@@ -1336,7 +1337,7 @@ async function findNext(qmsg, firstpass = true){
 
 	// auction estStart and estEnd should be adjusted now.
 	//var now = moment();
-	var dmBefore = moment().add(dmAlertTime,'minutes'); //compute now + 10 minutes to know what auctions should have auctions sent out
+	var dmBefore = moment().add(dmAlertTime,'minutes').add(currentAuctionDuration,'milliseconds'); //compute now + 10 minutes + current auction length to know what auctions should have auctions sent out
 
 	//console.log('>>Send Alerts to those starting before: ' + moment(dmBefore).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 
@@ -2098,13 +2099,15 @@ if(!startup){
 								}
 															
 					while(duration > 0 && killauction == false){
-								if(kill == true){duration = 0; nextupdate = 0;}			
+								if(kill == true){duration = 0; nextupdate = 0;}	
+								currentAuctionDuration = duration;
+
 									await sleep(nextupdate);
 								var dbchannel = await client.channels.cache.get(databasechannel);
 								var dbmsg = await dbchannel.messages.fetch(databasemsg);
 								let amsg = dbmsg.content;			
 								if(amsg == 'NO CURRENT AUCTION'){ kill = true}; //if we find the database message to be blank, kill the auction
-								if(kill == true){duration = 0; nextupdate = 0;}
+								if(kill == true){duration = 0; nextupdate = 0;currentAuctionDuration = duration;}
 								else{
 									var dbchannel = await client.channels.cache.get(databasechannel);
 									var dbmsg = await dbchannel.messages.fetch(databasemsg);
@@ -2120,6 +2123,7 @@ if(!startup){
 									let updateEmbed = await msgembed.embeds[0];
 									
 									duration = duration - nextupdate;
+									currentAuctionDuration = duration;
 									if(duration > 10000){
 										sniperIdentified = false;	//clearing any bids that aren't actually snipers
 									}
@@ -2344,6 +2348,7 @@ if(!startup){
 
 					await ClearDatabase(false); //reset database to blank... it should get populated by getNextAuction
 					console.log('Preparing for next auction');
+					currentAuctionDuration = 0;
 					await sleep(timeBetweenAuctions);
 					
 					nextauction = await getNextAuction();
