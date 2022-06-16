@@ -80,6 +80,7 @@ const isLive = true;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
 const dmAlertTime = 5;							// number of minutes before auction to start trying to send alerts 
 const antiSnipe = 15000;						// antisnipe add
+const maxDescChars = 280;						// max characters allowed for custom description field
 
 const sleep = (delay) => new Promise((resolve) => timeouts.push(setTimeout(resolve,delay)));
 
@@ -716,9 +717,8 @@ var descriptionText = '';
 					bypassImageScrape = true;
 				}
 				descriptionText = repliedTo.content;
-				if(descriptionText.includes('!auction') || descriptionText.includes('!queue')){
-					descriptionText = '';
-				}
+				if(descriptionText.includes('!auction') || descriptionText.includes('!queue')){descriptionText = '';}
+				if(descriptionText.length > maxDescChars){descriptionText = descriptionText.substring(0,maxDescChars);}
 				
 			});
 		}else{
