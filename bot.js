@@ -1993,6 +1993,8 @@ if(!startup){
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
 							if(!(auctionDeets[6] == null)){
 								nftdescription = auctionDeets[6].replace('¸',',');;
+							}else{
+								nftdescription ='';
 							}
 	
 							highbid = '0';					// CURRENT HIGH BID
