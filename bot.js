@@ -714,7 +714,7 @@ var descriptionText = '';
 			await message.fetchReference().then(repliedTo =>{
 				if(repliedTo.attachments.size > 0){
 					qImg = repliedTo.attachments.first().url;
-					bypassImageScrape = true;
+					bypassImageScrape = true; 
 				}
 				descriptionText = repliedTo.content.replace(',','¸');
 				if(descriptionText.includes('!auction') || descriptionText.includes('!queue')){descriptionText = '';}
@@ -1992,7 +1992,7 @@ if(!startup){
 							title = auctionDeets[4];		// NFT TITLE
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
 							if(!(auctionDeets[6] == null)){
-								nftdescription = auctionDeets[6];
+								nftdescription = auctionDeets[6].replace('¸',',');;
 							}
 	
 							highbid = '0';					// CURRENT HIGH BID
