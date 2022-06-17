@@ -1247,7 +1247,7 @@ async function findNext(qmsg, firstpass = true){
 		var auctionInfo = [];
 		for(var i = 0; i < qentries.length; i++){
 			auctionInfo.push({
-				messageID: qentries[i],
+				messageID: qentries[i].replace('dm',''),
 				starttime: qstart[i],
 				endtime: qend[i],
 				dmsent: dmsent[i]
@@ -1451,7 +1451,11 @@ async function dmAuctionAlerts(alertMsg) {
 									console.log("User has DMs closed or no mutual servers: " + user.id);
 								});
 								await user.send('🟡 HEADS UP ALERT 🟡\n> <https://discord.com/channels/962059766388101301/974014169483452436>').catch(() => {});
-								await reaction.users.remove(user).catch(console.log('error removing user reaction: HEADS UP ALERT'));
+								try{
+									await reaction.users.remove(user);
+								}catch{
+									console.log('error removing user reaction: HEADS UP ALERT');
+								}
 								console.log('DM sent to: ' + user.id);
 							}	
 					});
@@ -1614,19 +1618,23 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 		console.log('waiting for DM process to finish');
 	}
 
+
+	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
+	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
+
 	try{
 		await queueitem.delete();
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
 	}
-	await dbmsg.edit(qmsg);
 
-	//having an issue here and with the dmAuctionStart (cache issue... message seems to be deleted too soon)
-	//await queueitem.delete().catch(console.log('queueitem.delete(): queue item not found.'));
+	try{
+		await dbmsg.edit(qmsg);
+	}catch(err){
+		console.log('getNextAuction Error: ' + auctiondetails + '\n\n Error: ' + err);
+	}
 	
 	console.log('Submitting Auction Deets...');
-	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
-	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
 	return auctiondetails;
 }
 
@@ -1867,7 +1875,7 @@ if(!startup){
 		message.react('💚');
 	}
 
-	if(msg == '!tip'){
+	if(msg.includes('!tip')){
 		var tipimage = 'https://cdn.discordapp.com/attachments/962059766937567254/986479798991867984/aliG.gif';
 		let achan = await client.channels.cache.get(auctionchannel);
 		await achan.send({
@@ -1876,6 +1884,11 @@ if(!startup){
 		});
 		await message.react('💚');
 	}
+
+	if(msg.includes('tip the bot') || msg.includes('aliG.loopring.eth')){
+		try{await message.react('💚');}catch{console.log('cannot find message');}
+	}
+
 
 	if(msg.includes('chicken')){
 		message.react('🍗');
@@ -1918,8 +1931,13 @@ if(!startup){
 	if(msg.includes('!queue') || msg.includes('!auction')){
 		await message.react('<a:LOADING:986706895492505621>');
 		var addedtoqueue = await queueAdd(message);
-		if(addedtoqueue){await message.react('976603681850003486');}
-		if(!(addedtoqueue)){await message.react('❌');}
+		try{
+			if(addedtoqueue){await message.react('976603681850003486');}
+			if(!(addedtoqueue)){await message.react('❌');}
+		}catch{
+			console.log('Could not add emoji on command message: message not found');
+		}
+		
 	}
 } else{
 
@@ -1943,8 +1961,13 @@ if(!startup){
 						message.reply('sorry, me waz on the crapper... wut now?')
 					}else{
 						var addedtoqueue = await queueAdd(message);
-						if(addedtoqueue){await message.react('976603681850003486');}
-						if(!(addedtoqueue)){await message.reply('Yo, my main man... Added that to the queue!');}
+						try{
+							if(addedtoqueue){await message.react('976603681850003486');}
+							if(!(addedtoqueue)){await message.reply('Yo, my main man... Added that to the queue!');}
+						}catch{
+							console.log('Could not add emoji on command: message not found');
+						}
+
 	}} else{
 		(async() => {
 			do{		
@@ -2379,7 +2402,11 @@ if(!startup){
 	try{
 		
 		if(msg.includes('booyakasha') || msg.includes('booyakornsha')){
-			await message.react('976603681850003486');
+			try{
+				await message.react('976603681850003486');
+			}catch{
+				console.log('Could not add emoji: message not found');
+			}
 		}
 
 		if(msg.includes('!bid') || msg.includes('!bit') || msg.includes('!biddup') || msg.includes('!override')){
