@@ -1024,7 +1024,7 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	
 		var dbstr = Array.isArray(db) ? db.join(',') : "NO CURRENT AUCTION";
 		console.log('editing dbmsg for dbSet');
-		await dbmsg.edit(dbstr);
+		dbmsg.edit(dbstr);
 	return;
 }
 
@@ -1379,7 +1379,11 @@ async function findNext(qmsg, firstpass = true){
 				auctionInfo[i].starttime = moment(lastend).add(timeBetweenAuctions,'ms');
 				iStart = moment(auctionInfo[i].starttime);
 				fetchfailed = false;
-				let msgShift  = await qchannel.messages.fetch(auctionInfo[i].messageID.replace('dm',''));
+				try{
+					let msgShift  = await qchannel.messages.fetch(auctionInfo[i].messageID.replace('dm',''));
+				}catch{
+					fetchfailed = true;
+				}
 				if(msgShift == null){
 					fetchfailed = true;
 				}
@@ -1711,9 +1715,9 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	try{
 		console.log('deleting queue item: ' + queueitem.id);
-		var qchan = await client.channels.cache.get(queuechan);
-		queuedelete = await qchan.messages.fetch(queueitem.id);
-		queuedelete.delete();
+	//	var qchan = await client.channels.cache.get(queuechan);
+	//	queuedelete = await qchan.messages.fetch(queueitem.id);
+		queueitem.delete();
 		console.log('queue item deleted');
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
