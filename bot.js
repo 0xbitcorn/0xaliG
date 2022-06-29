@@ -191,6 +191,7 @@ global.currentauctiondbmsg = databasemsg;
 global.queuedbmsg = queuemsg;
 global.limitdbmsg = limitmsg;
 global.botid = alig;
+global.lastshift = moment();
 
 async function setGlobals(){
 	if(!(isLive)){
@@ -1299,6 +1300,11 @@ async function findNext(qmsg, firstpass = true){
 				dmsent: dmsent[i]
 			});
 		}
+var currentTime = moment();
+if(lastshift.add(1,"minutes").isAfter(currentTime)){
+	console.log('current time: ' + currentTime + ' is 1 minute past ' + lastshift );
+	lastshift = moment();
+
 	auctionInfo.sort(function (a, b) {
 		var idA = BigInt(a.messageID);
 		var idB = BigInt(b.messageID);
@@ -1390,13 +1396,17 @@ async function findNext(qmsg, firstpass = true){
 					fetchfailed = true;
 				}
 				if(!(fetchfailed)){
-					shiftQembed = await msgShift.embeds[0];
+					try{
+						shiftQembed = await msgShift.embeds[0];
 					//set timestamp to iStart
 					console.log('adjusting queue item timestamp');
 					await shiftQembed.setTimestamp(iStart);
 					msgShift.edit(new MessageEmbed(shiftQembed));
 					msgShift.edit({embeds: [shiftQembed]});
 					console.log('queue item timestamp adjusted');
+					}catch{
+						console.log('error during embed shift');
+					}
 				}else{
 					console.log(auctionInfo[i].messageID + ': message not found during shift...');
 				}
@@ -1410,6 +1420,10 @@ async function findNext(qmsg, firstpass = true){
 	}
 
 	if(firstpass){console.log('Adjusted Auction Start Times');} // JSON.stringify(auctionInfo));}
+
+
+
+}
 
 	// auction estStart and estEnd should be adjusted now.
 	//var now = moment();
