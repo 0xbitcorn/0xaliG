@@ -1710,8 +1710,8 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
 
 	try{
-		console.log('deleting queue item');
-		await queueitem.delete();
+		console.log('deleting queue item: ' + queueitem.id);
+		queueitem.delete();
 		console.log('queue item deleted');
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
