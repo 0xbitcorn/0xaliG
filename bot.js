@@ -1711,7 +1711,9 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	try{
 		console.log('deleting queue item: ' + queueitem.id);
-		queueitem.delete();
+		var qchan = await client.channels.cache.get(queuechan);
+		queuedelete = await qchan.messages.fetch(queueitem.id);
+		queuedelete.delete();
 		console.log('queue item deleted');
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
