@@ -1379,8 +1379,10 @@ async function findNext(qmsg, firstpass = true){
 				auctionInfo[i].starttime = moment(lastend).add(timeBetweenAuctions,'ms');
 				iStart = moment(auctionInfo[i].starttime);
 				fetchfailed = false;
+				let msgShift = null;
 				try{
-					let msgShift  = await qchannel.messages.fetch(auctionInfo[i].messageID.replace('dm',''));
+					console.log('fetching:' + auctionInfo[i].messageID.replace('dm',''));
+					msgShift = await qchannel.messages.fetch(auctionInfo[i].messageID.replace('dm',''));
 				}catch{
 					fetchfailed = true;
 				}
