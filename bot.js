@@ -16,6 +16,7 @@ client.once('ready', () =>{
 	console.log('Connected!')
 	client.user.setStatus('online');
 	client.user.setActivity('sumthin on me telly bout monkeys', {type: 'STREAMING', url: 'https://www.youtube.com/watch?v=LRZm9uLRiuE'});
+	setGlobals();
 	clearQueueMsg(); // clear current queue message (will repopulate)
 	ClearDatabase(); // clear current auction message and start listener
 	//dailyReset();	 // invokes a daily reset of the limits
@@ -27,7 +28,8 @@ client.login(auth.token)
 /////////////////
 //  CONSTANTS  //
 /////////////////
-// ADD ABILITY TO REPLY TO GET A DESCRIPTION FIELD
+
+const isLive = false;							// true = live; false = maintenance
 
 var timeouts = [];
 const gatewayipfs = 'https://gateway.pinata.cloud';
@@ -38,13 +40,32 @@ const timeBetweenQueueCheck = 15000;			// delay between queue checks in ms (for 
 
 const bitcorn = '416645304830394368';			// bitcorn user id
 const alig = '974143111418765313';				// aliG user id
+const buildg = '989299993116549120';			// builderG user id
 const server = '962059766388101301';			// server id
-const auctionchannel = '974014169483452436';	// auction channel
-const auctiontest = '976917431471710289';		// auction test channel
-const queuechannel = '978340918061039656';		// queue channel
+const testsrv = '989302872267169822';			// test server id
+
+
 const databasechannel = '975829186063237140'; 	// database channel
-const logchannel = '981929697791340564';		// error log channel
-const pauseuntil = moment(1654185600000);		// pause nextauction until input time
+const auctionchannel = '974014169483452436';	// auction channel 
+const queuechannel = '978340918061039656';		// queue channel
+const databasemsg = '975836495606849686'; 		// database message
+const queuemsg = '978341660507389952';			// queue message
+const limitmsg = '980668627030278194';			// limit message for monitoring post amounts
+
+//channels
+const auctiontestsrv = '989303841772175411';		// auction channel TEST SERVER 
+const queuetestsrv = '989303867386781777';			// queue channel TEST SERVER
+const dbtestsrv = '989304771234119681';				// database channel TEST SERVER
+
+//messages
+const dbmsgtestsrv = '989316933809737788';			// database message
+const qmsgtestsrv = '989316964939866132';			// queue message
+const lmsgtestsrv = '989316982795022406';			// limit message for monitoring post amounts
+
+
+
+//const logchannel = '981929697791340564';		// error log channel
+//const pauseuntil = moment(1654185600000);		// pause nextauction until input time
 
 
 //ROLES
@@ -68,15 +89,11 @@ const aliD = '980663669476196392';				// auction role
 const aliE = '979840380851879996';				// for special Events
 const aliF = '976887843915964447';				// auction fanatic role
 
-const databasemsg = '975836495606849686'; 		// database message
-const prizemsg = '977234646578376724'; 			// prize message
-const queuemsg = '978341660507389952';			// queue message
-const limitmsg = '980668627030278194';			// limit message for monitoring post amounts
+
 
 const livecolor = '#00ab66';					// embed color when live
 const endcolor = '#cf142b';						// embed color when auction ends
 const infocolor = '#FAFA33';					// embed color when under maintenance or a help message
-const isLive = true;							// true = live; false = maintenance
 const isSpecialEvent = false;					// special event trigger
 const dmAlertTime = 5;							// number of minutes before auction to start trying to send alerts 
 const antiSnipe = 15000;						// antisnipe add
@@ -167,6 +184,29 @@ const randommsg = (str) => {
 // GLOBAL VARIABLES //
 //////////////////////
 
+global.auctionchan = auctionchannel;
+global.queuechan = queuechannel;
+global.dbchan = databasechannel;
+global.currentauctiondbmsg = databasemsg;
+global.queuedbmsg = queuemsg;
+global.limitdbmsg = limitmsg;
+global.botid = alig;
+
+async function setGlobals(){
+	if(!(isLive)){
+		console.log('TEST VERSION');
+		global.auctionchan = auctiontestsrv;
+		global.queuechan = queuetestsrv;
+		global.dbchan = dbtestsrv;
+		global.currentauctiondbmsg = dbmsgtestsrv;
+		global.queuedbmsg = qmsgtestsrv;
+		global.limitdbmsg = lmsgtestsrv;
+		global.botid = buildg;
+	}
+}
+
+
+
 // RESET THESE VALUES WHEN CALLING NEXT AUCTION
 global.auctionEnded = true;			// AUCTION STATUS (SET TO FALSE WHEN NEW AUCTION STARTS)
 global.seller = "seller";			// NFT SELLER
@@ -188,6 +228,7 @@ global.kill = false;				// KILL 2.0
 global.processingDMs = false;		// TO IDENTIFY WHEN PROGRAM IS PROCESSING DMS
 global.lastAlertCheck = moment();	// USE THIS TO AVOID CHECKING HEADS UP ALERTS TOO OFTEN
 global.sniperIdentified = false;
+global.forcestart = '';				
 
 
 
@@ -498,7 +539,7 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 
 	//allow a max of 5 checks
 	var imgcheckcount = 0;
-	while(gotTitle == false && imgcheckcount < 11){
+	while(gotTitle == false && imgcheckcount < 6){
 		imgcheckcount++;
 		if(imgattached==false){console.log('Finding Image...');}
 		await page.waitForTimeout(3000);
@@ -545,8 +586,6 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 					imageTitle = await page.$eval(TITLE_SELECTOR, el => el.textContent);   //uate((sel) => {return document.querySelector(sel).getProperty('textContent');}, TITLE_SELECTOR)).jsonValue();
 					if(!(imageTitle.includes('NFT 0x')) && !(imageTitle == null)){gotTitle = true;}
 				}
-			} else{
-				await page.waitForTimeout(1000);
 			}
 		}	
 
@@ -567,8 +606,8 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 async function limitCheck(message, qduration, qdelay){
 	//used to check number of auction postings in 24 hr period
 
-	var dbchannel = await client.channels.cache.get(databasechannel);
-	var dbmsg = await dbchannel.messages.fetch(limitmsg);
+	var dbchannel = await client.channels.cache.get(dbchan);
+	var dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 	let lmsg = dbmsg.content;
 /*
 change to this when we get more busy
@@ -668,8 +707,8 @@ if(!(qdelay == 'N/A')){
 }
 
 var inputs = qduration + ',' + qdelay;
-dbchannel = await client.channels.cache.get(databasechannel);
-dbmsg = await dbchannel.messages.fetch(limitmsg);
+dbchannel = await client.channels.cache.get(dbchan);
+dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 await dbmsg.edit(lmsg);
 return inputs;
 
@@ -684,8 +723,8 @@ var descriptionText = '';
 
 	try{
 		var msg = message.content.toLowerCase();
-		var dbchannel = await client.channels.cache.get(databasechannel);
-		var dbmsg = await dbchannel.messages.fetch(queuemsg);
+		var dbchannel = await client.channels.cache.get(dbchan);
+		var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 		let qmsg = dbmsg.content;
 
 		if(qmsg.split(',').length > queuelimit){
@@ -743,7 +782,7 @@ var descriptionText = '';
 		}
 		
 		if(details == 'only set up for explorer.loopring.io and lexplorer.io'){
-			message.replay(details);
+			message.reply(details);
 			throw details;
 		}
 
@@ -810,7 +849,7 @@ var descriptionText = '';
 				qEmbed.setFooter({text: '🟢 Auction Start Alert\n🟡 ' + dmAlertTime + ' Min Heads Up\n🔴 Remove (SELLER/ADMIN ONLY)\nAPPROX. START >>> '});
 			}
 				
-			let queueEmbed = await client.channels.cache.get(queuechannel).send({ embeds: [qEmbed] });
+			let queueEmbed = await client.channels.cache.get(queuechan).send({ embeds: [qEmbed] });
 			await queueEmbed.react('🟢');
 			await queueEmbed.react('🟡');
 			await queueEmbed.react('🔴');			
@@ -864,8 +903,8 @@ async function killedAuction(){
 
 	client.user.setStatus('online');
 	client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
-	let dbchannel = await client.channels.cache.get(databasechannel);
-	let dbmsg = await dbchannel.messages.fetch(databasemsg);
+	let dbchannel = await client.channels.cache.get(dbchan);
+	let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 	await dbmsg.edit('NO CURRENT AUCTION');
 	kill = false;
 }
@@ -874,26 +913,26 @@ async function killedAuction(){
 async function ClearDatabase(initialstart = true){
 		client.user.setStatus('online');
 		client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
-		let dbchannel = await client.channels.cache.get(databasechannel);
-		let dbmsg = await dbchannel.messages.fetch(databasemsg);
+		let dbchannel = await client.channels.cache.get(dbchan);
+		let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 		await dbmsg.edit('NO CURRENT AUCTION');
 		
 		if(initialstart){
-			await client.channels.cache.get(queuechannel).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+			await client.channels.cache.get(queuechan).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
 			console.log('Current auction message cleared...');
 		}
 	}
 
 async function clearLimitMsg(){
-		let dbchannel = await client.channels.cache.get(databasechannel);
-		let dbmsg = await dbchannel.messages.fetch(limitmsg);
+		let dbchannel = await client.channels.cache.get(dbchan);
+		let dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 		await dbmsg.edit('LIMIT RESET');
 		console.log('Limits reset...');
 }
 
 async function clearQueueMsg(){
-	let dbchannel = await client.channels.cache.get(databasechannel);
-	let dbmsg = await dbchannel.messages.fetch(queuemsg);
+	let dbchannel = await client.channels.cache.get(dbchan);
+	let dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 	await dbmsg.edit('NO QUEUE');
 	console.log('Queue message cleared...');
 }
@@ -919,8 +958,8 @@ function dbCurrent(str, delimiter = ",") {
 
 // set database message for auction details
 async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auctionstart, auctionend) {
-	var dbchannel = await client.channels.cache.get(databasechannel);
-	var dbmsg = await dbchannel.messages.fetch(databasemsg);
+	var dbchannel = await client.channels.cache.get(dbchan);
+	var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 	var db = dbCurrent(dbmsg.content);
 	if (dbmsg.content == "NO CURRENT AUCTION"){
 		this.startmsg = msgid;
@@ -1023,8 +1062,8 @@ async function queuemsgcheck(firstpass = true){
 	if(firstpass){console.log('Performing Queue Message Validation Check');}
 	//load up queue db msg
 	var qupdated = false;
-	var dbchannel = await client.channels.cache.get(databasechannel);
-	var dbmsg = await dbchannel.messages.fetch(queuemsg);
+	var dbchannel = await client.channels.cache.get(dbchan);
+	var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 	var qmsg = dbmsg.content;
 	var qopposite = '';
 	
@@ -1033,14 +1072,14 @@ async function queuemsgcheck(firstpass = true){
 	}
 
 	//load up queue channel
-	var qchannel = await client.channels.cache.get(queuechannel);
+	var qchannel = await client.channels.cache.get(queuechan);
 	//queueitem = await qchannel.messages.fetch({limit: 100});
 	
 	const allFindNexts = [];
 	//process all fetched messages
 
 	try {
-		const myChan = await client.channels.fetch(queuechannel);
+		const myChan = await client.channels.fetch(queuechan);
 		var list = new Collection();
 		list = await fetchMore(myChan, 120);
 		//const table_authors = list.map((msg) => msg.author.username);
@@ -1206,7 +1245,7 @@ async function findNext(qmsg, firstpass = true){
 
 		//compute min start time
 		for (var i = 0; i < qentries.length; i++) {
-			var qchannel = await client.channels.cache.get(queuechannel);
+			var qchannel = await client.channels.cache.get(queuechan);
 			try{
 				if(qentries[i].includes('dm')){
 					dmsent.push(true);
@@ -1253,10 +1292,20 @@ async function findNext(qmsg, firstpass = true){
 				dmsent: dmsent[i]
 			});
 		}
+	auctionInfo.sort(function (a, b) {
+		var idA = BigInt(a.messageID);
+		var idB = BigInt(b.messageID);
+		if (idA < idB) {
+			return -1;
+		} else {
+			return 1;
+		}
+	});
+
 
 	// sort by soonest time an auction can start
 	// need to make sure auctions are sorted first by time input <<<<<<
-	auctionInfo.sort(function(a,b){
+	auctionInfo.sort(function (a, b) {
 		var startA = moment(a.starttime);
 		var endA = moment(a.endtime);
 		var startB = moment(b.starttime);
@@ -1264,19 +1313,21 @@ async function findNext(qmsg, firstpass = true){
 		var idA = BigInt(a.messageID);
 		var idB = BigInt(b.messageID);
 		//console.log('a: ' + idA + " and b: " + idB);
-		if(idA < idB){												// a was input before b so it gets priority
-			if(startA.isBefore(startB)) return -1;						// if a starts before b, a is first.
-			if(startA.isAfter(startB) && endB.isBefore(startA)){			// if b starts before a, check to see if it will be over before start of a.
-				return 1;														// if auction b will end before a should start, b is first.
-			}else{
-				return -1;														// if auction b doesn't end before a should start, a will push the start time for b.
+		if (idA < idB) { // a was input before b so it gets priority
+			if (startA.isBefore(startB))
+				return -1; // if a starts before b, a is first.
+			if (startA.isAfter(startB) && endB.isBefore(startA)) { // if b starts before a, check to see if it will be over before start of a.
+				return 1; // if auction b will end before a should start, b is first.
+			} else {
+				return -1; // if auction b doesn't end before a should start, a will push the start time for b.
 			}
-		}else{														// b was input before a so it gets priority
-			if(startB.isBefore(startA)) return 1;						// if b starts before a, b is first.
-			if(startB.isAfter(startA) && endA.isBefore(startB)){			// if b starts before a, check to see if it will be over before start of a.
-				return -1;														// if auction a will end before b should start, a is first.
-			}else{
-				return 1;														// if auction a doesn't end before b should start, b will push the start time for a.
+		} else { // b was input before a so it gets priority
+			if (startB.isBefore(startA))
+				return 1; // if b starts before a, b is first.
+			if (startB.isAfter(startA) && endA.isBefore(startB)) { // if b starts before a, check to see if it will be over before start of a.
+				return -1; // if auction a will end before b should start, a is first.
+			} else {
+				return 1; // if auction a doesn't end before b should start, b will push the start time for a.
 			}
 		}
 		return 0;
@@ -1285,6 +1336,7 @@ async function findNext(qmsg, firstpass = true){
 
 	
 	var lastend;
+	var laststart;
 	var currdur;
 	var iStart = moment();
 	var iEnd = moment();
@@ -1293,8 +1345,10 @@ async function findNext(qmsg, firstpass = true){
 	for (var i = 0; i < auctionInfo.length; i++) {
 		// capture duration of this auction prior to modifying est. start time
 		iStart = moment(auctionInfo[i].starttime);
+
 			//console.log(auctionInfo[i].messageID);
 			//console.log('Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+
 		iEnd = moment(auctionInfo[i].endtime); 
 			//console.log('End: ' + moment(iEnd).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 		
@@ -1303,9 +1357,18 @@ async function findNext(qmsg, firstpass = true){
 
 		if(i == 0){
 			lastend = moment(auctionInfo[i].endtime);
+			laststart = moment(auctionInfo[i].starttime);
 		} else{
+
+			// if auction starts after last auction started but before it ends + timeBetween... shift to be after + timeBetween
+			//if(iStart.isAfter(laststart) && iEnd.isBefore(lastend));
+
+
+			// if auction starts before last auction and ends before, leave it
+
+
 			//check if this auction is set to start after the end of the prior auction
-			if(lastend.isAfter(iStart)){
+			if(iStart.isAfter(lastend)){
 				auctionInfo[i].starttime = moment(lastend).add(timeBetweenAuctions,'ms');
 				iStart = moment(auctionInfo[i].starttime);
 				fetchfailed = false;
@@ -1322,7 +1385,7 @@ async function findNext(qmsg, firstpass = true){
 					msgShift.edit({embeds: [shiftQembed]});
 					console.log('queue item timestamp adjusted');
 				}else{
-					console.log('message not found during shift...');
+					console.log(auctionInfo[i].messageID + ': message not found during shift...');
 				}
 				//console.log('Shifted Start: ' + moment(iStart).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 			}
@@ -1368,32 +1431,38 @@ async function dmAuctionStart(alertMsg){
 	processingDMs = true;
 	try{
 		console.log('Processing GO TIME DM alerts for: ' + alertMsg);
-		var qchannel = await client.channels.cache.get(queuechannel);
-		var amsg = await qchannel.messages.fetch(alertMsg);
-		var reaction = await amsg.reactions.cache.get('🟢');
-		var users = await reaction.users.fetch();
-		
-		var aEmbed = await amsg.embeds[0];
-		var userlist = 'YO!!!! 🟢 IZ GO TIME 🟢 ';
+		var dmqchannel = await client.channels.cache.get(queuechan);
+		console.log('got channel');
+		var dmmsg = await dmqchannel.messages.fetch(alertMsg);
+		console.log('got message');
+		var dmreaction = await dmmsg.reactions.cache.get('🟢');
+		console.log('got reactions, count: ' + dmreaction.count);
+		var dmusers = await dmreaction.users.fetch();
+		console.log('got users');
+		var dmuserlist = 'YO!!!! 🟢 IZ GO TIME 🟢 ';
 
-		if(reaction.count > 1){
-			users.each(async(user) =>{
-					if(!(user.id == alig)){
-						userlist = userlist + '<@'+user.id+'> ';
+
+		if(dmreaction.count > 1){
+			dmusers.each(async(dmuser) =>{
+				console.log('user found:' + dmuser.id);
+					if(!(dmuser.id == botid)){
+						dmuserlist = dmuserlist + '<@'+dmuser.id+'> ';
 							//await reaction.users.remove(user).catch(console.log('error deleting user reaction: GO TIME ALERT'));
 						}	
 				});
 			}
 		
-		if(!(userlist == 'YO!!!! 🟢 IZ GO TIME 🟢 ')){
-			var achannel = await client.channels.cache.get(auctionchannel);
-			await achannel.send(userlist);
+		if(!(dmuserlist == 'YO!!!! 🟢 IZ GO TIME 🟢 ')){
+			var dmachannel = await client.channels.cache.get(auctionchan);
+			await dmachannel.send(dmuserlist);
 			console.log('GO TIME alert sent');
-		}
+		} 
 	}catch(err){
 		console.log(err);
 		console.log('Auction item was likely made live during processing');
 	}
+
+	console.log('done processing go time');
 	processingDMs = false;
 }
 
@@ -1405,7 +1474,7 @@ async function dmAuctionAlerts(alertMsg) {
 		lastAlertCheck = moment();
 		try{
 			console.log('Processing DM alerts for: ' + alertMsg);
-			var amsg = await setMessageValue(alertMsg,queuechannel);
+			var amsg = await setMessageValue(alertMsg,queuechan);
 			if (typeof amsg === 'string' || amsg instanceof String){
 				throw amsg;
 			}
@@ -1428,7 +1497,7 @@ async function dmAuctionAlerts(alertMsg) {
 			//check to see if it has booyakasha from ali-g already, if so, don't send to seller again.
 			if(!(sellerEmoji == undefined)){
 				var sellerCheck = await sellerEmoji.users.fetch();
-				if(!(sellerCheck.has(alig))){
+				if(!(sellerCheck.has(botid))){
 					await AlertSeller.send({ embeds: [aEmbed] }).catch(() => {
 						console.log("Unable to alert seller: " + AlertSeller.id);
 					});
@@ -1446,7 +1515,7 @@ async function dmAuctionAlerts(alertMsg) {
 			if(!(skipdms)){
 				if(reaction.count > 1){
 					users.each(async(user) =>{
-						if(!(user.id == alig)){
+						if(!(user.id == botid)){
 							await user.send({ embeds: [aEmbed] }).catch(() => {
 									console.log("User has DMs closed or no mutual servers: " + user.id);
 								});
@@ -1460,7 +1529,7 @@ async function dmAuctionAlerts(alertMsg) {
 							}	
 					});
 	
-					var dbmsg = await setMessageValue(queuemsg,databasechannel);
+					var dbmsg = await setMessageValue(queuedbmsg,dbchan);
 					if (typeof dbmsg === 'string' || dbmsg instanceof String){
 						throw dbmsg;
 					}
@@ -1489,13 +1558,13 @@ async function dmAuctionAlerts(alertMsg) {
 
 // grab details for next auction
 async function getNextAuction() { 
-	var dbchannel = await client.channels.cache.get(databasechannel);
+	var dbchannel = await client.channels.cache.get(dbchan);
 	var firstpass = true;
 	do{
 		//validate queue message entries and update if needed
 		await queuemsgcheck(firstpass);
 
-		var dbmsg = await dbchannel.messages.fetch(queuemsg);
+		var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 		var qmsg = dbmsg.content;
 		var qentries = new Array();
 		
@@ -1510,14 +1579,21 @@ async function getNextAuction() {
 		var qembed;
 		var itemselected = 'N/A';
 		var queueitem;
+		var qreaction;
 
 		await asyncSome(qentries, async (i) => {
-			var qchannel = await client.channels.cache.get(queuechannel);
+			var qchannel = await client.channels.cache.get(queuechan);
 			
 			try{
+				if(forcestart.length > 0){i = forcestart; itemselected = forcestart;}
 				//console.log('fetching msg: ' + i);
-				queueitem = await qchannel.messages.fetch(i.replace('dm',''));
+				queueitem = await qchannel.messages.fetch(i.replace('dm',''));				
 				qembed = await queueitem.embeds[0];
+				if(forcestart.length > 0){
+					console.log('force starting: ' + forcestart);
+					forcestart = '';
+					return true;
+				}
 				//console.log('embed timestamp: ' + qembed.timestamp);
 				if(qembed.timestamp == null){
 					itemselected = i;
@@ -1612,24 +1688,29 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	
 	//console.log('Initiating Start Alert');
 	await dmAuctionStart(queueitem.id); 	//sending go time alert
-
+	console.log('done with dm auction alerts... processingDMs: ' + processingDMs);
+	
 	while(processingDMs){
-		await sleep(1000);
 		console.log('waiting for DM process to finish');
+		await sleep(1000);
 	}
 
+	console.log('past sleep');
 
 	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
 	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
 
 	try{
-		await queueitem.delete();
+		console.log('deleting queue item');
+		queueitem.delete();
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
 	}
 
 	try{
-		await dbmsg.edit(qmsg);
+		console.log('editing database message');
+		dbmsg.edit(qmsg); //removed await here to avoid major delay for some reason
+		console.log('database message edited');
 	}catch(err){
 		console.log('getNextAuction Error: ' + auctiondetails + '\n\n Error: ' + err);
 	}
@@ -1724,25 +1805,39 @@ function containsWord(str, word) {
 
 // whenever a message if created, run this process 
 client.on("messageCreate", async message => {
+
+// QUICK CHECK TO ALLOW SETTING SYSTEM TO MAINTANENCE 
+	if(isLive){	
+		embedColor = livecolor; 
+		auctiontext = 'AUCTION';
+	}else{
+		embedColor = infocolor;
+		auctiontext = 'FAKE AUCTION';
+	}
+
+
 var nextauction;
 var startup = false;
 	// if the message isn't in either the auction channel, test channel, or queue channel, exit
-	if(!(message.channel.id == auctionchannel) && !(message.channel.id == auctiontest) && !(message.channel.id == queuechannel)) return;
+	if(!(message.channel.id == auctionchan) && !(message.channel.id == queuechan) && !(message.channel.id == dbchan)) return;
 
 	// ALI-G STARTUP
-	if(message.author == alig && message.content.includes('Iz awkshun time!')){
+	if(message.author == botid && message.content.includes('Iz awkshun time!')){
 		console.log('Startup Message Sent');
 		await message.delete();
 		startup = true;
-		var achan = await client.channels.cache.get(auctionchannel);
+		var achan = await client.channels.cache.get(auctionchan);
+		var qchan = await client.channels.cache.get(queuechan);
 		if(isLive){
 			achan.setName('💰▪auction-haus').catch(console.error);
+			qchan.setName('📜▪auction-queue').catch(console.error);
 		} else{
 			achan.setName('🚧▪testing-haus').catch(console.error);
+			qchan.setName('🍳▪testing-queue').catch(console.error);
 		}
 	}else{
 		// check if the author is a bot and quit if so (unless in the queuechannel ==> for triggering the initial cache)	
-		if(message.author.bot && !(message.channel.id == queuechannel)) return;
+		if(message.author.bot && !(message.channel.id == queuechan)) return;
 	}
 
 	// set initial variables
@@ -1750,16 +1845,14 @@ var startup = false;
 	var embedColor;
 	var auctiontext;
 
-// QUICK CHECK TO ALLOW SETTING SYSTEM TO MAINTANENCE 
-if(isLive){	embedColor = livecolor; auctiontext = 'AUCTION';}
-else{ embedColor = infocolor; auctiontext = 'FAKE AUCTION';}
+
 
 if(!startup){
 	// check if member has the necessary role for using commands
-	if(message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){	
+	if(message.guild.id == testsrv || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){	
 		if(msg.includes('!count')){
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(queuemsg);
+			var dbchannel = await client.channels.cache.get(dbchan);
+			var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 			let qmsg = dbmsg.content;
 			message.reply('Current items in queue: ' + qmsg.split(',').length);
 			
@@ -1777,7 +1870,7 @@ if(!startup){
 		if(message.author.id == bitcorn){
 			// create a new database entry
 			if(msg.includes('!createmsg')){
-				client.channels.cache.get(databasechannel).send('NEW DATABASE MESSAGE CREATED');
+				client.channels.cache.get(dbchan).send('NEW DATABASE MESSAGE CREATED');
 			}
 
 			// get next auction
@@ -1823,7 +1916,7 @@ if(!startup){
 					let scrapeEmbed = message.channel.send({ embeds: [sEmbed] });
 			}
 
-			// push edit to prize message (custom set below)
+			/* // push edit to prize message (custom set below)
 			if(msg.includes('!edit')){
 				var dbchannel = await client.channels.cache.get(databasechannel);
 				var dbmsg = await dbchannel.messages.fetch(prizemsg);
@@ -1860,7 +1953,7 @@ if(!startup){
 					pmsg = pmsg.replace('\n',', ');
 				}
 				dbmsg.edit(pmsg);
-			}
+			} */
 		}
 	}
 
@@ -1877,7 +1970,7 @@ if(!startup){
 
 	if(msg.includes('!tip')){
 		var tipimage = 'https://cdn.discordapp.com/attachments/962059766937567254/986479798991867984/aliG.gif';
-		let achan = await client.channels.cache.get(auctionchannel);
+		let achan = await client.channels.cache.get(auctionchan);
 		await achan.send({
 			files: [tipimage],
 			content: 'BIGGUP YO SELF!'
@@ -1942,7 +2035,7 @@ if(!startup){
 } else{
 
 	// limit these functions to approved auction roles				
-	if(startup || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){
+	if(startup || message.guild.id == testsrv || message.member.roles.cache.has(puzzlegang) ||  message.member.roles.cache.has(wingman) || message.member.roles.cache.has(kernalcommander) || message.member.roles.cache.has(aliF)){
 			if(killauction == true){
 				message.reply('gimme one mo minute... i need to kill an awkshun and finnish me smoke')
 				message.reply('!timer 1');
@@ -1982,8 +2075,8 @@ if(!startup){
 						}
 
 					console.log('Starting Next Auction');
-					var dbchannel = await client.channels.cache.get(databasechannel);
-					var dbmsg = await dbchannel.messages.fetch(databasemsg);
+					var dbchannel = await client.channels.cache.get(dbchan);
+					var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 					var usernotfound = false;
 					console.log('[Next Auction] ' + nextauction);
 
@@ -2042,7 +2135,7 @@ if(!startup){
 								.setThumbnail(botimg)
 								.setFooter({text: 'bid commands: !bid, !bit, !biddup [for help: !help]'});
 								//.setFooter({text: 'SELLER: ' + seller });
-								let achan = await client.channels.cache.get(auctionchannel);
+								let achan = await client.channels.cache.get(auctionchan);
 								let introEmbed = achan.send({ embeds: [iEmbed] });
 								achan.send('Yo! <@' + sellerid + '>... u iz up!!! Lez do dis!');
 								auctionEnded = false;
@@ -2128,14 +2221,14 @@ if(!startup){
 								currentAuctionDuration = duration;
 
 									await sleep(nextupdate);
-								var dbchannel = await client.channels.cache.get(databasechannel);
-								var dbmsg = await dbchannel.messages.fetch(databasemsg);
+								var dbchannel = await client.channels.cache.get(dbchan);
+								var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 								let amsg = dbmsg.content;			
 								if(amsg == 'NO CURRENT AUCTION'){ kill = true}; //if we find the database message to be blank, kill the auction
 								if(kill == true){duration = 0; nextupdate = 0;currentAuctionDuration = duration;}
 								else{
-									var dbchannel = await client.channels.cache.get(databasechannel);
-									var dbmsg = await dbchannel.messages.fetch(databasemsg);
+									var dbchannel = await client.channels.cache.get(dbchan);
+									var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 									let amsg = dbmsg.content;
 
 
@@ -2143,7 +2236,7 @@ if(!startup){
 									highbid = amsg.split(',')[1];			// should this be pulled from database or left to global 
 									highbidder = amsg.split(',')[2];		// should this be pulled from database or left to global 
 									
-									let chan = await client.channels.cache.get(auctionchannel); 
+									let chan = await client.channels.cache.get(auctionchan); 
 									let msgembed = await chan.messages.fetch(startmsg);
 									let updateEmbed = await msgembed.embeds[0];
 									
@@ -2194,11 +2287,21 @@ if(!startup){
 									} else {
 
 										if(duration == 0 && !(sniperIdentified)){
-											dbmsg = await dbchannel.messages.fetch(databasemsg);
+											
+											dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 											amsg = dbmsg.content;
+											
 											var winningbid = amsg.split(',')[1];	// should this be pulled from database or left to global
 											reserve = amsg.split(',')[3];			// should this be pulled from database or left to global
 											var winningbidder;
+											await sleep(1000);
+											if(highbid > winningbid){
+												winningbid = highbid;
+												winningbidder = highbidder;
+												sniperIdentified = true;
+												timeleft = '<1 min';
+											}else{
+											auctionEnded = true;
 											var titlemsg;
 											var authormsg;
 											authormsg = 'Å╙ï-G [' + auctiontext + ' ENDED]';
@@ -2209,9 +2312,12 @@ if(!startup){
 											updateEmbed.setColor(endcolor);
 											msgembed.edit(new MessageEmbed(updateEmbed));
 											msgembed.edit({embeds: [updateEmbed]});
-	
+											
+											
+												winningbidder = amsg.split(',')[2];	
+											
+
 											if (winningbid > 0){
-												winningbidder = amsg.split(',')[2];		// should this be pulled from database or left to global
 												titlemsg = 'HIGH BID = ' + winningbid + ' LRC';
 												titlemsg = titlemsg.split('').join(' ');
 												endimage = randommsg('imgend');
@@ -2243,7 +2349,6 @@ if(!startup){
 													{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
 												)
 												.setFooter({text: 'Report any issues/suggestions to @BTCornBLAIQchnz\naliG.loopring.eth'})
-												auctionEnded = true;
 												let endEmbed = await achan.send({ embeds: [eEmbed] });
 											try{
 												let endImg = await achan.send({files: [endimage]});
@@ -2255,7 +2360,7 @@ if(!startup){
 										//dbmsg.edit('NO CURRENT AUCTION');
 										//client.user.setStatus('online');
 										//client.user.setActivity('Fantasia', {type: 'WATCHING'});
-										
+										}
 										} else{
 												timeleft = '<1 min';
 										}
@@ -2270,12 +2375,12 @@ if(!startup){
 	
 										if(timeleft == "ENDED"){
 											updateEmbed.setColor(endcolor);
-											let dbchannel = await client.channels.cache.get(databasechannel);
-											let dbmsg = await dbchannel.messages.fetch(databasemsg);
+											let dbchannel = await client.channels.cache.get(dbchan);
+											let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 											let amsg = dbmsg.content;
 											var updatemsg = amsg.split(',')[4];
 											if(!(updatemsg == 'N/A')){
-												let chan = await client.channels.cache.get(auctionchannel); 
+												let chan = await client.channels.cache.get(auctionchan); 
 												let secondMessage = await chan.messages.fetch(updatemsg);
 												secondMessage.edit(new MessageEmbed(updateEmbed));
 												secondMessage.edit({embeds: [updateEmbed]});
@@ -2286,13 +2391,14 @@ if(!startup){
 										}
 										
 										updateEmbed.fields[0] = { name: 'TIME LEFT: ' + timeleft, value: 'RESERVE: ' + reserve + ' LRC', inline: true }
-										if(winningbid > 0){
+										if(winningbid > 0 && !(duration > 0)){
 											authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
 											authormsg = authormsg.split('').join(' ');
 											updateEmbed.setAuthor({name: authormsg})
 											updateEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true}
 										}
 										
+
 										msgembed.edit(new MessageEmbed(updateEmbed));
 										msgembed.edit({embeds: [updateEmbed]});
 										updateEmbed.setThumbnail(imgurl);
@@ -2301,8 +2407,8 @@ if(!startup){
 						
 										
 						if(duration/1000 > 69 || duration/1000 == 60){
-								let dbchannel = await client.channels.cache.get(databasechannel);
-								let dbmsg = await dbchannel.messages.fetch(databasemsg);
+								let dbchannel = await client.channels.cache.get(dbchan);
+								let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 								let amsg = dbmsg.content;
 								var updatemsg = amsg.split(',')[4];
 								
@@ -2311,7 +2417,7 @@ if(!startup){
 									dbSet(undefined, undefined, undefined, undefined, secondMessage.id); //, startTime, endTime);
 									});
 								} else{
-									let chan = await client.channels.cache.get(auctionchannel); 
+									let chan = await client.channels.cache.get(auctionchan); 
 									let messages = await chan.messages.fetch({limit: 1});
 									let lastMessage = messages.first();
 									let secondMessage = await chan.messages.fetch(updatemsg);
@@ -2379,7 +2485,7 @@ if(!startup){
 					nextauction = await getNextAuction();
 					if(nextauction == 'NO QUEUE'){
 						console.log('queue empty');
-						await client.channels.cache.get(auctionchannel).send('any more out there? queue empty.');
+						await client.channels.cache.get(auctionchan).send('any more out there? queue empty.');
 						startup = true;
 					}
 //		}
@@ -2414,8 +2520,8 @@ if(!startup){
 			if(isSpecialEvent && !(message.member.roles.cache.has(aliE))){userCanBid = false;}
 			
 			if(userCanBid && kill == false && !(auctionEnded)){
-				var dbchannel = await client.channels.cache.get(databasechannel);
-				var dbmsg = await dbchannel.messages.fetch(databasemsg);
+				var dbchannel = await client.channels.cache.get(dbchan);
+				var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 				let amsg = dbmsg.content;
 				let isOverride = false;
 
@@ -2439,7 +2545,7 @@ if(!startup){
 					}
 					
 					if(msg.includes('!override')){
-						if(message.member.roles.cache.has(puzzlegang)){
+						if(message.guild.id == testsrv || message.member.roles.cache.has(puzzlegang)){
 							isOverride = true;
 							var override = msg.slice(10);
 							override = override.replace(/\s+/g, '');
@@ -2465,7 +2571,7 @@ if(!startup){
 
 				if(+bid > +highbid && +bid < 1374513896 && !(hasLetter) && !(auctionEnded)){
 
-					let chan = await client.channels.cache.get(auctionchannel); 
+					let chan = await client.channels.cache.get(auctionchan); 
 					let msgembed = await chan.messages.fetch(startmsg);
 					let updateEmbed = await msgembed.embeds[0];			
 					if(bid > 0){
@@ -2615,23 +2721,28 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(user.bot) return;
 	if (!reaction.message.guild) return;
 	try{
-		if(reaction.message.channel.id == auctionchannel){
+		if(reaction.message.channel.id == auctionchan){
 			if(reaction.emoji.name === '🔴' || reaction.emoji.name === '❌'){
 				var auctionToKill = reaction.message.id;
-				var dbchannel = await client.channels.cache.get(databasechannel);
-				var dbmsg = await dbchannel.messages.fetch(databasemsg);
+				var dbchannel = await client.channels.cache.get(dbchan);
+				var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 				let amsg = dbmsg.content;
 				var initialmsg = amsg.split(',')[0];
 				var secondmsg = amsg.split(',')[4];
 				if(auctionToKill == initialmsg || auctionToKill == secondmsg){
 					let qUser = reaction.message.embeds[0].fields[0].value;
-					var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
-				
 
-				if(qUser.includes(user.id) || hasRole){
+					var hasRole;
+					if(reaction.message.guild.id == testsrv){
+						hasRole = true;
+					}else{
+						hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
+					}
+
+				if(qUser.includes(user.id) || hasRole ){
 					kill = true;  //wonder if deleting the embed message would work, but we'll try kill first	
-					var dbchannel = await client.channels.cache.get(auctionchannel);
-					await client.channels.cache.get(auctionchannel).send('MUrrrrrrdurrrr! I iz killin it!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+					var dbchannel = await client.channels.cache.get(auctionchan);
+					await client.channels.cache.get(auctionchan).send('MUrrrrrrdurrrr! I iz killin it!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
 					//await ClearDatabase();
 				}else{
 					console.log('unauthorized user trying to kill auction: ' + user.id);
@@ -2645,12 +2756,28 @@ client.on('messageReactionAdd', async (reaction, user) => {
 		reaction.users.remove(user).catch(console.log('user reaction not found.'));
 	}
 
-	if(reaction.message.channel.id == queuechannel){
+	if(reaction.message.channel.id == queuechan){
+		
+		if(reaction.emoji.name === '🔥'){
+			let qUser = reaction.message.embeds[0].fields[0].value;
+			var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(kernalcommander);
+			console.log(qUser + ' is trying to invoke auto start. Admin role: ' + hasRole);
+
+			if(user.id == bitcorn || hasRole){
+				forcestart = reaction.message.id;
+				console.log('forcing a start of: ' + forcestart);
+			}else{
+				reaction.users.remove(user).catch(console.log('user reaction not found.'));
+			}
+		}
+	
+
+
 		if(reaction.emoji.name === '🟢'){
 			console.log('Auction Alert Subscriber Added');
 			var reactmsgid = reaction.message.id;
-			var dbchannel = await client.channels.cache.get(databasechannel);
-			var dbmsg = await dbchannel.messages.fetch(queuemsg);
+			var dbchannel = await client.channels.cache.get(dbchan);
+			var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 			let qmsg = dbmsg.content;
 			if(qmsg.includes('dm'+reactmsgid)){
 				qmsg = qmsg.replace('dm'+reactmsgid,reactmsgid);
@@ -2658,13 +2785,19 @@ client.on('messageReactionAdd', async (reaction, user) => {
 			}
 		}else if(reaction.emoji.name === '🔴'){
 			let qUser = reaction.message.embeds[0].fields[0].value;
-			var hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
-			console.log(qUser + ' is trying to remove queue item. Admin role: ' + hasRole);
+			var hasRole;
+			if(reaction.message.guild.id == testsrv){
+				hasRole = true;
+			}else{
+				hasRole = await reaction.message.guild.members.cache.get(user.id).roles.cache.has(puzzlegang);
+			}
 
-			if(qUser.includes(user.id) || hasRole){
+			console.log(user.id + ' is trying to remove queue item. Admin role: ' + hasRole);
+
+			if(qUser.includes(user.id) || hasRole ){
 				var removemsgid = reaction.message.id;
-				var dbchannel = await client.channels.cache.get(databasechannel);
-				var dbmsg = await dbchannel.messages.fetch(queuemsg);
+				var dbchannel = await client.channels.cache.get(dbchan);
+				var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 				let qmsg = dbmsg.content;
 				console.log(removemsgid + ' ' + qmsg);
 				if(qmsg.includes(removemsgid)){
