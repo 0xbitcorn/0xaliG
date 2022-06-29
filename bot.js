@@ -1711,7 +1711,8 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	try{
 		console.log('deleting queue item');
-		queueitem.delete();
+		await queueitem.delete();
+		console.log('queue item deleted');
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
 	}
