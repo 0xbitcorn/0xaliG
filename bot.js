@@ -29,7 +29,7 @@ client.login(auth.token)
 //  CONSTANTS  //
 /////////////////
 
-const isLive = false;							// true = live; false = maintenance
+const isLive = true;							// true = live; false = maintenance
 
 var timeouts = [];
 const gatewayipfs = 'https://gateway.pinata.cloud';
