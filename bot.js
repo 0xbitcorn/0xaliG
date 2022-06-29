@@ -709,6 +709,7 @@ if(!(qdelay == 'N/A')){
 var inputs = qduration + ',' + qdelay;
 dbchannel = await client.channels.cache.get(dbchan);
 dbmsg = await dbchannel.messages.fetch(limitdbmsg);
+console.log('editing dbmsg for limitCheck');
 await dbmsg.edit(lmsg);
 return inputs;
 
@@ -861,6 +862,7 @@ var descriptionText = '';
 				qmsg = qmsg.replace(',,',',').replace(/\s+/g,'');
 			}
 
+			console.log('editing dbmsg for queueAdd');
 			await dbmsg.edit(qmsg);
 			return true;
 			
@@ -915,6 +917,7 @@ async function ClearDatabase(initialstart = true){
 		client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
+		console.log('editing dbmsg for ClearDatabase');
 		await dbmsg.edit('NO CURRENT AUCTION');
 		
 		if(initialstart){
@@ -926,6 +929,7 @@ async function ClearDatabase(initialstart = true){
 async function clearLimitMsg(){
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(limitdbmsg);
+		console.log('editing dbmsg for clearLimitMsg');
 		await dbmsg.edit('LIMIT RESET');
 		console.log('Limits reset...');
 }
@@ -933,6 +937,7 @@ async function clearLimitMsg(){
 async function clearQueueMsg(){
 	let dbchannel = await client.channels.cache.get(dbchan);
 	let dbmsg = await dbchannel.messages.fetch(queuedbmsg);
+	console.log('editing dbmsg for clearQueueMsg');
 	await dbmsg.edit('NO QUEUE');
 	console.log('Queue message cleared...');
 }
@@ -1018,8 +1023,9 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 		//db[5] = this.end;
 	
 		var dbstr = Array.isArray(db) ? db.join(',') : "NO CURRENT AUCTION";
-	
-	return dbmsg.edit(dbstr);
+		console.log('editing dbmsg for dbSet');
+		await dbmsg.edit(dbstr);
+	return;
 }
 
 async function fetchMore(channel, limit = 250) {
@@ -1160,6 +1166,7 @@ async function queuemsgcheck(firstpass = true){
 	  if(qupdated){
 		  if(+qmsg.length < 1){qmsg = 'NO QUEUE';}
 		  console.log('Updating Queue Message to: ' + qmsg);
+		  console.log('edtiing dbmsg for queuemsgcheck');
 		  await dbmsg.edit(qmsg);
 		  await sleep(1000); // give it a second to make sure it's updated
 	  }
@@ -1539,6 +1546,7 @@ async function dmAuctionAlerts(alertMsg) {
 					
 					console.log(alertMsg);
 					qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
+					console.log('editing dbmsg for dmAuctionAlerts');
 					await dbmsg.edit(qmsg);
 				}
 			}else{
@@ -1635,6 +1643,7 @@ async function getNextAuction() {
 						if(qmsg.charAt(qmsg.length) == ','){
 							qmsg = qmsg.slice(0,-1);
 						}
+						console.log('editing dbmsg for asyncSome');
 						await dbmsg.edit(qmsg);
 					}					
 			}
@@ -2781,6 +2790,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 			let qmsg = dbmsg.content;
 			if(qmsg.includes('dm'+reactmsgid)){
 				qmsg = qmsg.replace('dm'+reactmsgid,reactmsgid);
+				console.log('editing dbmsg for subscriberAdd');
 				await dbmsg.edit(qmsg);
 			}
 		}else if(reaction.emoji.name === '🔴'){
@@ -2818,6 +2828,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 							qmsg=qmsg.slice(0, -1);
 						}
 					}
+					console.log('editing dbmsg for auction remove');
 					await dbmsg.edit(qmsg);
 				} else{
 					console.log('Queue message was not in database');
