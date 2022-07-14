@@ -192,7 +192,7 @@ global.currentauctiondbmsg = databasemsg;
 global.queuedbmsg = queuemsg;
 global.limitdbmsg = limitmsg;
 global.botid = alig;
-global.lastshift = moment();
+global.nextshift = moment();
 
 async function setGlobals(){
 	if(!(isLive)){
@@ -594,6 +594,7 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 	browser.close();
 
 	if(gotTitle == true){
+		imageTitle = encodeURI(imageTitle.replace(',','¸'));
 		if(imgattached == true){
 			return imageTitle;	
 		}else{
@@ -757,6 +758,9 @@ var descriptionText = '';
 				if(repliedTo.attachments.size > 0){
 					qImg = repliedTo.attachments.first().url;
 					bypassImageScrape = true; 
+				}else if(message.attachments.size >0){
+					qImg = message.attachments.first().url;
+					bypassImageScrape = true;	
 				}
 				descriptionText = repliedTo.content.replace(',','¸');
 				if(descriptionText.includes('!auction') || descriptionText.includes('!queue')){descriptionText = '';}
@@ -802,6 +806,8 @@ var descriptionText = '';
 				console.log('had to invoke that encodeURI function.');
 			}
 		}
+
+		qTitle = decodeURI(qTitle.replace('¸',','));
 
 		console.log(qTitle + ' qtitle ' + bypassImageScrape + ' bypass? ' + details + ' details');
 		//gets here... and has a struggle.... then hops into performing queue message validation check.
@@ -1168,7 +1174,7 @@ async function queuemsgcheck(firstpass = true){
 	  if(qupdated){
 		  if(+qmsg.length < 1){qmsg = 'NO QUEUE';}
 		  console.log('Updating Queue Message to: ' + qmsg);
-		  console.log('edtiing dbmsg for queuemsgcheck');
+		  console.log('editing dbmsg for queuemsgcheck');
 		  dbmsg.edit(qmsg);
 		  await sleep(1000); // give it a second to make sure it's updated
 	  }
@@ -1178,6 +1184,7 @@ async function queuemsgcheck(firstpass = true){
 		  //dbchannel = await client.channels.cache.get(databasechannel);
 		  //dbmsg = await dbchannel.messages.fetch(queuemsg);
 		  //qmsg = dbmsg.content;
+		  console.log('starting findNext');
 	  await findNext(qmsg, firstpass);
 
 }
@@ -1225,9 +1232,10 @@ function compareStartTimes(a, b) {
 
 }
 
-
 async function findNext(qmsg, firstpass = true){
+	
 	//console.log('finding on deck: ' + qmsg);
+	var qmsgtime = new Array(); 
 	var qentries = new Array();
 	var qstart = new Array();
 	var qend = new Array();
@@ -1268,11 +1276,12 @@ async function findNext(qmsg, firstpass = true){
 					}
 					
 					queueitem = await qchannel.messages.fetch(qentries[i].replace('dm',''))
+					qmsgtime.push(queueitem.createdTimestamp);
 					qembed = await queueitem.embeds[0];
 					
 						//get intended start time
 							if(qembed.timestamp == null){
-								qstart.push(moment());
+								qstart.push(moment().valueOf());
 								currstart = moment();
 							}else{
 								qstart.push(moment(qembed.timestamp).valueOf());
@@ -1287,7 +1296,7 @@ async function findNext(qmsg, firstpass = true){
 							if(durationms.includes(':')){durHour = parseInt(durationms.split(':')[0]); durationms = durationms.split(':')[1]};
 							durMin = parseInt(durationms);
 							durationms = ((+durDay*24 + +durHour)*60 + +durMin)*60000;
-							qend.push(moment(currstart).add(durationms,'ms'));
+							qend.push(moment(currstart).add(durationms,'ms').valueOf());
 
 				}catch(err){
 					console.log('fetch failed for: ' + qentries[i].replace('dm','') + '; removing item from array.'); //failed for some reason
@@ -1295,35 +1304,173 @@ async function findNext(qmsg, firstpass = true){
 					i--;
 					console.log('Error in findNext: ' + err);
 				}
-			}
-
-			
+			}		
 		}
 
 		var auctionInfo = [];
 		for(var i = 0; i < qentries.length; i++){
 			auctionInfo.push({
+				timeCreated: qmsgtime[i],
 				messageID: qentries[i].replace('dm',''),
 				starttime: qstart[i],
 				endtime: qend[i],
 				dmsent: dmsent[i]
 			});
 		}
-var currentTime = moment();
-if(lastshift.add(1,"minutes").isAfter(currentTime)){
-	console.log('current time: ' + currentTime + ' is 1 minute past ' + lastshift );
-	lastshift = moment();
+var currenttime = moment();
 
+//triggering too often
+
+if(currenttime.isAfter(nextshift)){
+	console.log('shift was scheduled for: ' + nextshift + ' and current time is ' + currenttime );
+	nextshift = moment().add(1, 'minute');
+
+	// sort by time created... move messages created first to top priority (earlier in the array)
 	auctionInfo.sort(function (a, b) {
-		var idA = BigInt(a.messageID);
-		var idB = BigInt(b.messageID);
-		if (idA < idB) {
-			return -1;
-		} else {
-			return 1;
-		}
+		return a.timeCreated - b.timeCreated;
 	});
 
+	var timeconflict = false;
+
+	console.log(auctionInfo);
+
+	//go through and check each item... make sure it doesn't conflict with others... 
+	//check from lowest priority (most apt to move) to last item (that won't change.)
+
+	
+	if(firstpass){console.log('Estimating Auction Start Times');}
+
+	//if we find that the auction with the greatest priority is set to start before the current time
+	//adjust the time shown to now + currentAuctionDuration between
+	var qadjust;
+	const presenttime = moment();  //set as constant to avoid it changing
+	console.log('current time prior to diff calc: ' + presenttime);
+
+	//first lets make sure all are not in the past:
+	for(i=0; i < auctionInfo.length; i++){
+		if(moment(auctionInfo[i].starttime).isBefore(presenttime)){
+
+			console.log('present1: ' + presenttime);
+			let difftonow = moment(presenttime);
+			console.log('present2: ' + presenttime);
+
+			console.log('diff1: ' + difftonow);
+			difftonow.subtract(moment(auctionInfo[i].starttime));
+			console.log('diff2: ' + difftonow);
+
+			console.log('[current time] ' + presenttime);
+			console.log('difference from auctionstart to now: ' + difftonow);
+			//let's only add the currentauctionduration + timebetween if this isn't the highest priority item based on time input into queue.
+
+			console.log('encountered auction that was scheduled in the past, shifted to current time')
+			auctionInfo[i].starttime = auctionInfo[i].starttime + difftonow;
+			auctionInfo[i].endtime = auctionInfo[i].endtime + difftonow;
+			console.log(auctionInfo);
+	
+			if(currentAuctionDuration > 0 && i > 0){ 
+				auctionInfo[i].starttime = auctionInfo[i].starttime + currentAuctionDuration + timeBetweenAuctions;
+				auctionInfo[i].endtime = auctionInfo[i].endtime + currentAuctionDuration + timeBetweenAuctions;
+				console.log('currentauctionduration: ' + currentAuctionDuration );
+			}
+
+
+			try{
+				console.log('fetching: ' + auctionInfo[i].messageID);
+				qadjust = await qchannel.messages.fetch(auctionInfo[i].messageID);
+			}catch{
+				fetchfailed = true;
+			}
+			if(qadjust == null){
+				fetchfailed = true;
+			}
+	
+			if(!(fetchfailed)){
+				try{
+					let shiftQembed = await qadjust.embeds[0];
+					console.log('adjusting time to current time for queue item: ' + auctionInfo[i].messageID);
+					await shiftQembed.setTimestamp(moment(auctionInfo[i].starttime));
+					qadjust.edit(new MessageEmbed(shiftQembed));
+					qadjust.edit({embeds: [shiftQembed]});
+					console.log('queue item timestamp adjusted: ' + auctionInfo[i].messageID);
+				}catch{
+					console.log('error during embed shift for:'  + auctionInfo[i].messageID);
+				}
+			}else{
+				console.log(auctionInfo[i].messageID + ': message not found during shift...');
+			}
+		}
+	}
+	console.log('completed check for queue items in the past' );
+	
+	qadjust = null;
+	var updatetime = false;
+
+	//now let's compare the queue items and adjust accordingly
+	//no need to check message with highest priority auctionInfo[0]
+	for(i = 1; i < auctionInfo.length; i++){
+		for(j = 0; j < i; j++){
+			//check to make sure this doesn't conflict with items of higher priority
+			//i = lower priority
+			//j = higher priority
+			console.log('comparing higher priority: ' + auctionInfo[j].messageID + ' to lower priority ' + auctionInfo[i].messageID);
+			
+			//if i.start is between j.start and j.end
+			//or if i.end is between j.start and j.end
+
+			if(auctionInfo[i].starttime >= auctionInfo[j].starttime && auctionInfo[i].starttime <= auctionInfo[j].endtime){
+				timeconflict = true; //conflict
+			}
+
+			if(auctionInfo[i].starttime <= auctionInfo[j].endtime && auctionInfo[i].endtime >= auctionInfo[j].starttime){
+				timeconflict = true; //conflict
+			}
+
+			//if conflict with auction j, shift until after auction j
+			if(timeconflict){
+				auctionInfo[i].endtime = (auctionInfo[i].endtime - auctionInfo[i].starttime); //temporarily convert endtime to be the duration
+				auctionInfo[i].starttime = auctionInfo[j].endtime + timeBetweenAuctions;
+				auctionInfo[i].endtime = auctionInfo[i].starttime + auctionInfo[i].endtime; //add the duration onto the new adjusted end time (needs updated for rest of loop)
+				
+				updatetime = true;
+				timeconflict = false;
+			}
+
+			//check auction with next highest priority
+		}	
+		
+		if(updatetime){
+			try{
+				console.log('fetching: ' + auctionInfo[i].messageID);
+				qadjust = await qchannel.messages.fetch(auctionInfo[i].messageID);
+			}catch{
+				fetchfailed = true;
+			}
+			if(qadjust == null){
+				fetchfailed = true;
+			}
+
+			if(!(fetchfailed)){
+				try{
+					let shiftQembed = await qadjust.embeds[0];
+					console.log('adjusting timestamp for queue item: ' + auctionInfo[i].messageID);
+					await shiftQembed.setTimestamp(moment(auctionInfo[i].starttime));
+					qadjust.edit(new MessageEmbed(shiftQembed));
+					qadjust.edit({embeds: [shiftQembed]});
+					console.log('queue item timestamp adjusted: ' + auctionInfo[i].messageID);
+				}catch{
+					console.log('error during embed shift for:'  + auctionInfo[i].messageID);
+				}
+			}else{
+				console.log(auctionInfo[i].messageID + ': message not found during shift...');
+			}
+			updatetime = false;
+			qadjust = null;
+		}
+	}
+
+	if(firstpass){console.log('Checked for Auction Time Conflicts');}
+
+/* 
 
 	// sort by soonest time an auction can start
 	// need to make sure auctions are sorted first by time input <<<<<<
@@ -1353,11 +1500,11 @@ if(lastshift.add(1,"minutes").isAfter(currentTime)){
 			}
 		}
 		return 0;
-	});
+	}); */
 
 
 	
-	var lastend;
+	/* var lastend;
 	var laststart;
 	var currdur;
 	var iStart = moment();
@@ -1426,10 +1573,10 @@ if(lastshift.add(1,"minutes").isAfter(currentTime)){
 			lastend = iStart.add(currdur,'ms');
 		}
 
-	}
+	} 
 
 	if(firstpass){console.log('Adjusted Auction Start Times');} // JSON.stringify(auctionInfo));}
-}
+}*/
 
 	// auction estStart and estEnd should be adjusted now.
 	//var now = moment();
@@ -1458,7 +1605,7 @@ if(lastshift.add(1,"minutes").isAfter(currentTime)){
 		}
 	}
 }
-
+}
 
 async function dmAuctionStart(alertMsg){
 	processingDMs = true;
@@ -1490,10 +1637,18 @@ async function dmAuctionStart(alertMsg){
 			await dmachannel.send(dmuserlist);
 			console.log('GO TIME alert sent');
 		} 
+
 	}catch(err){
 		console.log(err);
 		console.log('Auction item was likely made live during processing');
 	}
+	console.log('deleting queue item for auction that is starting: ' + dmmsg.id);
+	try{
+		dmmsg.delete();
+	}catch(err){
+		console.log('error deleting message: ' + err);
+	}
+	console.log('finished deleting queue item for auction that is starting');
 
 	console.log('done processing go time');
 	processingDMs = false;
@@ -1597,8 +1752,9 @@ async function getNextAuction() {
 	var firstpass = true;
 	do{
 		//validate queue message entries and update if needed
+		console.log('starting queue validator');
 		await queuemsgcheck(firstpass);
-
+		console.log('queue validator completed');
 		var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 		var qmsg = dbmsg.content;
 		var qentries = new Array();
@@ -1615,6 +1771,12 @@ async function getNextAuction() {
 		var itemselected = 'N/A';
 		var queueitem;
 		var qreaction;
+
+		qentries.sort(function (a, b) {
+			return parseInt(a) - parseInt(b);
+		});
+
+		console.log('getting next auction from these: ' + qentries);
 
 		await asyncSome(qentries, async (i) => {
 			var qchannel = await client.channels.cache.get(queuechan);
@@ -1675,7 +1837,6 @@ async function getNextAuction() {
 					}					
 			}
 		});
-
 		//if(itemselected == 'N/A'){
 		//	var daybefore = moment.utc().dayOfYear();
 		//	await sleep(15000); //wait 15 seconds 
@@ -1687,15 +1848,12 @@ async function getNextAuction() {
 		//	console.log('Listening for new queue items...');
 		//	console.log(itemselected);
 		//}
-
-		if(itemselected =='N/A'){
+		if(itemselected == 'N/A'){
 			firstpass = false;
-			console.log('no auction found, checking again in 10 seconds...');
+			console.log('[Finding Auction On Deck] ...next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
 			await sleep(timeBetweenQueueCheck);
 		}
-
 	}while(itemselected == 'N/A');
-
 if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	if(qmsg == itemselected){
@@ -1716,8 +1874,10 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	let qurl = await qembed.url;
 	let qimage = await qembed.thumbnail.url;
 	let qtitle = await qembed.title;
+	qtitle = encodeURI(qtitle.replace(',','¸'));
 	let qdescription = await qembed.description; //added test
 	
+
 	qimage = qimage.replace(gatewayipfs,loopringipfs);
 	
 	//console.log('Pushing current auction details to database');
@@ -1736,15 +1896,16 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
 	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
 
-	try{
+	/* try{
 		console.log('deleting queue item: ' + queueitem.id);
 		var qchan = await client.channels.cache.get(queuechan);
-		queuedelete = await qchan.messages.fetch(queueitem.id);
-		queuedelete.delete();
+		qchan.messages.delete(queueitem.id);
+		//let queuedelete =  
+		//queuedelete.delete();
 		console.log('queue item deleted');
 	}catch(err){
 		console.log('queueitem.delete(): queue item not found.\n' + err);
-	}
+	} */
 
 	try{
 		console.log('editing database message');
@@ -1831,11 +1992,6 @@ function setLength(time){
 	}
 			time = daysSL + 'd ' + hoursSL + 'h ' + minuteSL + 'm ';   	
 			return time;
-}
-
-// check if a string contains a word
-function containsWord(str, word) {
-  return str.match(new RegExp("\\b" + word + "\\b")) != null;
 }
 
 /////////////////////
@@ -1943,7 +2099,7 @@ if(!startup){
 			}
 
 			//scrape information from website
-			if(msg.includes('!scrape')){
+			/* if(msg.includes('!scrape')){
 			var details = await scrape(msg.split(' ')[1]);
 			var deTitle = details.split(',')[0];
 			var deImg = details.split(',')[1];
@@ -1953,7 +2109,7 @@ if(!startup){
 								.setDescription('Å╙ï-G SCRAPE TEST')
 								.setImage(deImg)
 					let scrapeEmbed = message.channel.send({ embeds: [sEmbed] });
-			}
+			} */
 
 			/* // push edit to prize message (custom set below)
 			if(msg.includes('!edit')){
@@ -2109,7 +2265,10 @@ if(!startup){
 							do{
 									nextauction = await getNextAuction();
 									if(kill){kill = false;} //reset if last auction was killed
-
+									if(nextauction == 'NO QUEUE'){
+										console.log('[Finding Next Auction] ...next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
+										await sleep(timeBetweenQueueCheck);
+									}
 							}while(nextauction == 'NO QUEUE');
 						}
 
@@ -2144,10 +2303,11 @@ if(!startup){
 							//console.log('imgurl: ' + imgurl);
 							imgurl = imgurl.replace(/\s+/g,'');
 							imgurl = imgurl.replace(gatewayipfs, loopringipfs);
-							title = auctionDeets[4];		// NFT TITLE
+							title = auctionDeets[4].replace('¸',',');		// NFT TITLE
+							title = decodeURI(title);
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
 							if(!(auctionDeets[6] == null)){
-								nftdescription = auctionDeets[6].replace('¸',',');;
+								nftdescription = auctionDeets[6].replace('¸',',');
 							}else{
 								nftdescription ='';
 							}
@@ -2465,7 +2625,11 @@ if(!startup){
 										secondMessage.edit(new MessageEmbed(updateEmbed));
 										secondMessage.edit({embeds: [updateEmbed]});
 									}else{
-										secondMessage.delete();
+										try{
+											secondMessage.delete();
+										}catch(err){
+											console.log(err);
+										}
 										await achan.send({ embeds: [updateEmbed] }).then(secondMessage => {
 										dbSet(undefined, undefined, undefined, undefined, secondMessage.id); //, startTime, endTime);
 										});
