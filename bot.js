@@ -1643,12 +1643,7 @@ async function dmAuctionStart(alertMsg){
 		console.log('Auction item was likely made live during processing');
 	}
 	console.log('deleting queue item for auction that is starting: ' + dmmsg.id);
-	try{
-		dmmsg.delete();
-	}catch(err){
-		console.log('error deleting message: ' + err);
-	}
-	console.log('finished deleting queue item for auction that is starting');
+	await dmmsg.react('🌿');
 
 	console.log('done processing go time');
 	processingDMs = false;
@@ -2921,7 +2916,13 @@ if(!startup){
 client.on('messageReactionAdd', async (reaction, user) => {	
 	if(reaction.message.partial) await reaction.message.fetch();
 	if(reaction.partial) await reaction.fetch();
-	if(user.bot) return;
+	if(user.bot){
+		if(user.id == alig && reaction.emoji.name === '🌿'){
+			console.log('removing queue item sent to auction: ' + reaction.message.id);
+			await reaction.message.delete();
+		}
+		return;
+	}
 	if (!reaction.message.guild) return;
 	try{
 		if(reaction.message.channel.id == auctionchan){
