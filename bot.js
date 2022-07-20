@@ -49,16 +49,16 @@ const databasechannel = '975829186063237140'; 	// database channel
 const auctionchannel = '974014169483452436';	// auction channel
 const vipchannel = '976917431471710289';		// vip room 
 const queuechannel = '978340918061039656';		// queue channel
-const databasemsg = '975836495606849686'; 		// database message
-const queuemsg = '978341660507389952';			// queue message
-const limitmsg = '980668627030278194';			// limit message for monitoring post amounts
+const saleschannel = '997909038039834784';		// sales channel
 
-//channels
 const auctiontestsrv = '989303841772175411';		// auction channel TEST SERVER 
 const queuetestsrv = '989303867386781777';			// queue channel TEST SERVER
 const dbtestsrv = '989304771234119681';				// database channel TEST SERVER
 
 //messages
+const databasemsg = '975836495606849686'; 		// database message
+const queuemsg = '978341660507389952';			// queue message
+const limitmsg = '980668627030278194';			// limit message for monitoring post amounts
 const dbmsgtestsrv = '989316933809737788';			// database message
 const qmsgtestsrv = '989316964939866132';			// queue message
 const lmsgtestsrv = '989316982795022406';			// limit message for monitoring post amounts
@@ -188,6 +188,7 @@ const randommsg = (str) => {
 global.auctionchan = auctionchannel;
 global.queuechan = queuechannel;
 global.dbchan = databasechannel;
+global.saleschan = saleschannel; 
 global.currentauctiondbmsg = databasemsg;
 global.queuedbmsg = queuemsg;
 global.limitdbmsg = limitmsg;
@@ -200,6 +201,7 @@ async function setGlobals(){
 		global.auctionchan = auctiontestsrv;
 		global.queuechan = queuetestsrv;
 		global.dbchan = dbtestsrv;
+		global.saleschan = auctionchan;
 		global.currentauctiondbmsg = dbmsgtestsrv;
 		global.queuedbmsg = qmsgtestsrv;
 		global.limitdbmsg = lmsgtestsrv;
@@ -2522,6 +2524,16 @@ if(!startup){
 													endimage = 'https://i.gifer.com/76Gy.gif';
 												}else{
 													await achan.send('Yo! ' + winningbidder + ' DM my main man <@' + sellerid + '> and cordinate dat swapskis!');
+													//dm seller a summary
+
+													// send sale message to sales channel
+													let schan = await client.channels.cache.get(saleschan);
+													try{
+														schan.send(seller + ' sold *' + title + '* for *' + winningbid + ' LRC* ➡️ ' + winningbidder); 
+													}catch(err){
+														console.log(err);
+													}
+												
 												}
 											} else{
 												winningbidder = 'Sum wak shiz! No bits';
