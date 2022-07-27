@@ -2174,6 +2174,9 @@ if(!startup){
 		try{await message.react('💚');}catch{console.log('cannot find message');}
 	}
 
+	if(msg.includes('420')){
+		message.react('💨');
+	}
 
 	if(msg.includes('chicken')){
 		message.react('🍗');
@@ -2524,12 +2527,16 @@ if(!startup){
 													endimage = 'https://i.gifer.com/76Gy.gif';
 												}else{
 													await achan.send('Yo! ' + winningbidder + ' DM my main man <@' + sellerid + '> and cordinate dat swapskis!');
+													
 													//dm seller a summary
+													user.send('**' + title + '** sold for **' + winningbid + ' LRC** ➡️  ' + winnerusername);
 
 													// send sale message to sales channel
+													var winnerusername;
+													winnerusername = winningbidder.replace('@','')
 													let schan = await client.channels.cache.get(saleschan);
 													try{
-														schan.send(seller + ' sold *' + title + '* for *' + winningbid + ' LRC* ➡️ ' + winningbidder); 
+														schan.send(seller + ' sold **' + title + '** for **' + winningbid + ' LRC** ➡️  ' + winnerusername); 
 													}catch(err){
 														console.log(err);
 													}
