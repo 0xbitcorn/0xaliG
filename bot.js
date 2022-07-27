@@ -2527,16 +2527,34 @@ if(!startup){
 													endimage = 'https://i.gifer.com/76Gy.gif';
 												}else{
 													await achan.send('Yo! ' + winningbidder + ' DM my main man <@' + sellerid + '> and cordinate dat swapskis!');
+
+													var winnerid;
+													winnerid = winningbidder.replace('<@','').replace('>','')
+													let winninguser = await client.users.fetch(winnerid);
+													if(winninguser == null){
+														usernotfound = true;
+														console.log('user not found');
+													}; 
+													var winningusername;
+														//let user = await client.users.cache.get(sellerid).catch(usernotfound = true);
+														if(usernotfound){
+															winningusername = "[USER] " + winnerid;
+														}else{
+															winningusername = winninguser.username;
+														}
+
+
+
 													
+
 													//dm seller a summary
-													user.send('**' + title + '** sold for **' + winningbid + ' LRC** ➡️  ' + winnerusername);
+													user.send('**' + title + '** sold for **' + winningbid + ' LRC** ➡️  ' + winningusername);
 
 													// send sale message to sales channel
-													var winnerusername;
-													winnerusername = winningbidder.replace('@','')
+
 													let schan = await client.channels.cache.get(saleschan);
 													try{
-														schan.send(seller + ' sold **' + title + '** for **' + winningbid + ' LRC** ➡️  ' + winnerusername); 
+														schan.send(seller + ' sold **' + title + '** for **' + winningbid + ' LRC** ➡️  ' + winningusername); 
 													}catch(err){
 														console.log(err);
 													}
