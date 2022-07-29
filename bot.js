@@ -2094,6 +2094,7 @@ if(!startup){
 									{ name: 'MAX DAY SALES', value: maxdaymove, inline: true}
 									)
 			let statEmbed = message.channel.send({ embeds: [sEmbed] });
+			message.delete();
 		}
 		
 		if(message.author.id == bitcorn){
