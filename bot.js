@@ -2087,9 +2087,9 @@ if(!startup){
 			let sEmbed = new MessageEmbed()
 								.setColor(infocolor)
 								.setTitle(deTitle)
-								.setImage(botimg)
+								.setThumbnail(botimg)
 								.addFields(
-									{ name: 'TOTAL LRC MOVED', value: totalmoved},
+									{ name: 'TOTAL LRC MOVED', value: totalmoved, inline: true},
 									{ name: 'NFTS MOVED: ', value: nftsmoved, inline: true },
 									{ name: 'MAX DAY SALES', value: maxdaymove, inline: true}
 									)
