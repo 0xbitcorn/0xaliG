@@ -2821,8 +2821,9 @@ if(!startup){
 					let msgembed = await chan.messages.fetch(startmsg);
 					let updateEmbed = await msgembed.embeds[0];			
 					if(bid > 0){
-
-						highbid = bid
+						console.log('[before set] high bid: ' + highbid + ' bid: ' + bid );
+						highbid = bid;
+						console.log('[after set] high bid: ' + highbid + ' bid: ' + bid );
 
 						authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
 						authormsg = authormsg.split('').join(' ');
@@ -2851,6 +2852,7 @@ if(!startup){
 							bidmsg = 'Yo, check it... I set dat bid at ' + bid + ' for my man ' + highbidder + '. Now youze keep droppin dem bits!'
 							dbSet(undefined, bid, highbidder); //, undefined, undefined ,undefined);
 						}else if(!(auctionEnded)){
+							console.log('high bid: ' + highbid + ' bid variable: ' + bid);
 							bidmsg = '[NEW HIGH BID] ' + bid +' LRC by <@' + message.author + '>';
 							dbSet(undefined, bid, message.author); //, undefined, undefined ,undefined);
 						}
