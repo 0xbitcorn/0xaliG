@@ -59,9 +59,11 @@ const dbtestsrv = '989304771234119681';				// database channel TEST SERVER
 const databasemsg = '975836495606849686'; 		// database message
 const queuemsg = '978341660507389952';			// queue message
 const limitmsg = '980668627030278194';			// limit message for monitoring post amounts
-const dbmsgtestsrv = '989316933809737788';			// database message
-const qmsgtestsrv = '989316964939866132';			// queue message
-const lmsgtestsrv = '989316982795022406';			// limit message for monitoring post amounts
+const statsmsg = '1002377092899537116';			// auction haus stats message
+const lastresetmsg = '1002377525537816576';		// last reset
+const dbmsgtestsrv = '989316933809737788';		// database message
+const qmsgtestsrv = '989316964939866132';		// queue message
+const lmsgtestsrv = '989316982795022406';		// limit message for monitoring post amounts
 
 
 
@@ -185,6 +187,9 @@ const randommsg = (str) => {
 // GLOBAL VARIABLES //
 //////////////////////
 global.processingauction = '';
+global.currentday = moment();
+global.daysales = 0;
+
 
 global.auctionchan = auctionchannel;
 global.queuechan = queuechannel;
@@ -192,7 +197,9 @@ global.dbchan = databasechannel;
 global.saleschan = saleschannel; 
 global.currentauctiondbmsg = databasemsg;
 global.queuedbmsg = queuemsg;
+global.stats = statsmsg;
 global.limitdbmsg = limitmsg;
+global.lastreset = lastresetmsg;
 global.botid = alig;
 global.nextshift = moment();
 
@@ -2076,6 +2083,12 @@ if(!startup){
 				client.channels.cache.get(dbchan).send('NEW DATABASE MESSAGE CREATED');
 			}
 
+			if(msg.includes('!clearlog')){
+				console.clear();
+				message.channel.send('Wicked! I flushed them logs!');
+				console.log('[LOGS FLUSHED]');
+			}
+
 			// get next auction
 			if(msg.includes('!next')){
 				let nextauction = await getNextAuction();
@@ -2569,8 +2582,43 @@ if(!startup){
 													}catch(err){
 														console.log(err);
 													}
-												
+
+
+													let astats = await dbchannel.messages.fetch(stats);
+													let totallrc = astats.split(',')[0];
+													let totalnfts = astats.split(',')[1];
+													let maxdaysales = astats.split(',')[2];
+													
+													//update total lrc moved
+													totallrc = totallrc + winningbid;
+
+													//update total nfts moved
+													totalnfts = totalnfts + 1;
+
+													//check if max day sales were broken
+													let today = moment();
+													if(today.isSame(currentday,"day")){
+														daysales = daysales + winningbid;
+														if(daysales > maxdaysales){
+															maxdaysales = daysales;
+															console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
+														}
+													}else{
+														if(daysales > maxdaysales){
+															maxdaysales = daysales;
+															console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
+														}
+														daysales = 0;
+														currentday = moment();
+														console.log('starting daily reset...');
+														dailyReset();
+														console.log('daily reset started...');
+													}
+
+													let newstatsmsg = totallrc + ',' + totalnfts + ',' + maxdaysales;
+													astats.edit(newstatsmsg);
 												}
+
 											} else{
 												winningbidder = 'Sum wak shiz! No bits';
 												titlemsg = 'NO BIDS, NO SALE';
