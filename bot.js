@@ -2083,6 +2083,12 @@ if(!startup){
 				client.channels.cache.get(dbchan).send('NEW DATABASE MESSAGE CREATED');
 			}
 
+			if(msg.includes('!setstats')){
+				let astats = await dbchannel.messages.fetch(stats);
+				let initialstats = '1515, 50, 1515';
+				astats.edit(initialstats);
+			}
+
 			if(msg.includes('!clearlog')){
 				console.clear();
 				message.channel.send('Wicked! I flushed them logs!');
@@ -2591,21 +2597,22 @@ if(!startup){
 													let maxdaysales = smsg.split(',')[2];
 													
 													//update total lrc moved
-													totallrc = totallrc + winningbid;
+													totallrc = +totallrc + +winningbid;
 
 													//update total nfts moved
-													totalnfts = totalnfts + 1;
+													totalnfts = +totalnfts + 1;
 
 													//check if max day sales were broken
 													let today = moment();
 													if(today.isSame(currentday,"day")){
-														daysales = daysales + winningbid;
-														if(daysales > maxdaysales){
+														daysales = daysales + +winningbid;
+														console.log('[CURRENT DAY SALES] ' + daysales);
+														if(+daysales > +maxdaysales){
 															maxdaysales = daysales;
 															console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
 														}
 													}else{
-														if(daysales > maxdaysales){
+														if(+daysales > +maxdaysales){
 															maxdaysales = daysales;
 															console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
 														}
