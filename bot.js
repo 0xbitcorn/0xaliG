@@ -2585,9 +2585,10 @@ if(!startup){
 
 
 													let astats = await dbchannel.messages.fetch(stats);
-													let totallrc = astats.split(',')[0];
-													let totalnfts = astats.split(',')[1];
-													let maxdaysales = astats.split(',')[2];
+													let smsg = astats.content
+													let totallrc = smsg.split(',')[0];
+													let totalnfts = smsg.split(',')[1];
+													let maxdaysales = smsg.split(',')[2];
 													
 													//update total lrc moved
 													totallrc = totallrc + winningbid;
