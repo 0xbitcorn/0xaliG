@@ -2083,6 +2083,7 @@ if(!startup){
 			var totalmoved = astats.content.split(',')[0];
 			var nftsmoved = astats.content.split(',')[1];
 			var maxdaymove = astats.content.split(',')[2];
+			var statfooter = 'Stat record began July 27, 2022';
 			var deTitle = 'AUCTION HAUS STATS'
 			let sEmbed = new MessageEmbed()
 								.setColor(infocolor)
@@ -2093,6 +2094,7 @@ if(!startup){
 									{ name: 'NFTS MOVED: ', value: nftsmoved, inline: true },
 									{ name: 'MAX DAY SALES', value: maxdaymove, inline: true}
 									)
+								.setFooter(statfooter)
 			let statEmbed = message.channel.send({ embeds: [sEmbed] });
 			message.delete();
 		}
