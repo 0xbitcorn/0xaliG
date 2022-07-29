@@ -2089,12 +2089,13 @@ if(!startup){
 								.setColor(infocolor)
 								.setTitle(deTitle)
 								.setThumbnail(botimg)
+								.setFooter(statfooter)
 								.addFields(
 									{ name: 'TOTAL LRC MOVED', value: totalmoved, inline: true},
 									{ name: 'NFTS MOVED: ', value: nftsmoved, inline: true },
 									{ name: 'MAX DAY SALES', value: maxdaymove, inline: true}
 									)
-								.setFooter(statfooter)
+
 			let statEmbed = message.channel.send({ embeds: [sEmbed] });
 			message.delete();
 		}
