@@ -2084,6 +2084,7 @@ if(!startup){
 			}
 
 			if(msg.includes('!setstats')){
+				var dbchannel = await client.channels.cache.get(dbchan);
 				let astats = await dbchannel.messages.fetch(stats);
 				let initialstats = '1515, 50, 1515';
 				astats.edit(initialstats);
