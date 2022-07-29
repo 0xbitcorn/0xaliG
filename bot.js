@@ -184,6 +184,7 @@ const randommsg = (str) => {
 //////////////////////
 // GLOBAL VARIABLES //
 //////////////////////
+global.processingauction = '';
 
 global.auctionchan = auctionchannel;
 global.queuechan = queuechannel;
@@ -1244,7 +1245,7 @@ async function findNext(qmsg, firstpass = true){
 	var dmsent = new Array();
 
 		if(qmsg == 'NO QUEUE'){return qmsg;}
-		qmsg = qmsg.replace(/\s+/g, '');
+		qmsg = qmsg.replace(processingauction,'').replace(',,',',').replace(/\s+/g, '');
 
 		if(qmsg.includes(',')){
 			qentries = qmsg.split(',');
@@ -1644,8 +1645,18 @@ async function dmAuctionStart(alertMsg){
 		console.log(err);
 		console.log('Auction item was likely made live during processing');
 	}
-	console.log('deleting queue item for auction that is starting: ' + dmmsg.id);
-	await dmmsg.react('🌿');
+
+	processingauction = dmmsg.id; //mark which auction is being processed 
+	
+	try{
+		console.log('deleting queue item for auction that is starting: ' + dmmsg.id);
+		await dmmsg.react('🌿');	
+
+	}catch(err){
+		console.log(err);
+		console.log('error encountered during message delete');
+	}
+
 
 	console.log('done processing go time');
 	processingDMs = false;
@@ -1757,10 +1768,10 @@ async function getNextAuction() {
 		var qentries = new Array();
 		
 		if(qmsg == 'NO QUEUE'){return qmsg;}
-		qmsg = qmsg.replace(/\s+/g, '');
+		qmsg = qmsg.replace(processingauction,'').replace(',,',',').replace(/\s+/g, ''); //remove auction that is currently processing
 
 		if(qmsg.includes(',')){
-			qentries = qmsg.replace('dm','').split(',');
+			qentries = qmsg.replace('dm','').split(','); 
 		}else{
 			qentries[0] = qmsg.replace('dm','');
 		}
@@ -1781,23 +1792,23 @@ async function getNextAuction() {
 			try{
 				if(forcestart.length > 0){i = forcestart; itemselected = forcestart;}
 				//console.log('fetching msg: ' + i);
-				queueitem = await qchannel.messages.fetch(i.replace('dm',''));				
+				queueitem = await qchannel.messages.fetch(i.replace('dm',''));
 				qembed = await queueitem.embeds[0];
-				if(forcestart.length > 0){
-					console.log('force starting: ' + forcestart);
-					forcestart = '';
-					return true;
-				}
-				//console.log('embed timestamp: ' + qembed.timestamp);
-				if(qembed.timestamp == null){
-					itemselected = i;
-					return true;}
-				let now = moment();
-
-				if(now.isSameOrAfter(qembed.timestamp)){
-					itemselected = i;
-					return true;
-				}; 
+					if(forcestart.length > 0){
+						console.log('force starting: ' + forcestart);
+						forcestart = '';
+						return true;
+					}
+					//console.log('embed timestamp: ' + qembed.timestamp);
+					if(qembed.timestamp == null){
+						itemselected = i;
+						return true;}
+					let now = moment();
+	
+					if(now.isSameOrAfter(qembed.timestamp)){
+						itemselected = i;
+						return true;
+					}; 
 			}catch(err){
 					console.log('had error: ' + err);
 				//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
