@@ -2076,6 +2076,25 @@ if(!startup){
 			check.edit(new MessageEmbed(checkEmbed));
 			check.edit({embeds: [checkEmbed]}); */
 		}
+
+		if(msg.includes('!stats')){
+			var dbchannel = await client.channels.cache.get(dbchan);
+			let astats = await dbchannel.messages.fetch(stats);
+			var totalmoved = astats.content.split(',')[0];
+			var nftsmoved = astats.content.split(',')[1];
+			var maxdaymove = astats.content.split(',')[2];
+			var deTitle = 'AUCTION HAUS STATS'
+			let sEmbed = new MessageEmbed()
+								.setColor(infocolor)
+								.setTitle(deTitle)
+								.setImage(botimg)
+								.addFields(
+									{ name: 'TOTAL LRC MOVED', value: totalmoved},
+									{ name: 'NFTS MOVED: ', value: nftsmoved, inline: true },
+									{ name: 'MAX DAY SALES', value: maxdaymove, inline: true}
+									)
+			let statEmbed = message.channel.send({ embeds: [sEmbed] });
+		}
 		
 		if(message.author.id == bitcorn){
 			// create a new database entry
@@ -2089,6 +2108,8 @@ if(!startup){
 				let initialstats = '1515, 50, 1515';
 				astats.edit(initialstats);
 			}
+
+
 
 			if(msg.includes('!clearlog')){
 				console.clear();
