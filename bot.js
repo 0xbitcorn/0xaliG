@@ -2,7 +2,7 @@
 //  ALI - G: AUCTION LISTING INTERACTIVE GANGSTA  //
 ////////////////////////////////////////////////////
 
-const {Client, Intents, MessageEmbed, MessageAttachment, Collection} = require('discord.js');
+const {Client, Intents, MessageEmbed, MessageAttachment, Collection, MessageActionRow, MessageButton} = require('discord.js');
 const puppeteer = require('puppeteer');
 const moment = require('moment');
 const auth = require('./auth.json');
@@ -189,6 +189,7 @@ const randommsg = (str) => {
 global.processingauction = '';
 global.currentday = moment();
 global.daysales = 0;
+global.timeleft = '';
 
 
 global.auctionchan = auctionchannel;
@@ -1083,7 +1084,7 @@ async function fetchMore(channel, limit = 250) {
 
 
 async function queuemsgcheck(firstpass = true){
-	if(firstpass){console.log('Performing Queue Message Validation Check');}
+	//if(firstpass){console.log('Performing Queue Message Validation Check');}
 	//load up queue db msg
 	var qupdated = false;
 	var dbchannel = await client.channels.cache.get(dbchan);
@@ -1189,12 +1190,12 @@ async function queuemsgcheck(firstpass = true){
 		  await sleep(1000); // give it a second to make sure it's updated
 	  }
 
-	  if(firstpass){console.log('Processing Auction Alerts');}
+	  //if(firstpass){console.log('Processing Auction Alerts');}
 	  //going to exclude a regrab of this
 		  //dbchannel = await client.channels.cache.get(databasechannel);
 		  //dbmsg = await dbchannel.messages.fetch(queuemsg);
 		  //qmsg = dbmsg.content;
-		  console.log('starting findNext');
+		  //console.log('starting findNext');
 	  await findNext(qmsg, firstpass);
 
 }
@@ -1767,9 +1768,9 @@ async function getNextAuction() {
 	var firstpass = true;
 	do{
 		//validate queue message entries and update if needed
-		console.log('starting queue validator');
+		//console.log('starting queue validator');
 		await queuemsgcheck(firstpass);
-		console.log('queue validator completed');
+		//console.log('queue validator completed');
 		var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 		var qmsg = dbmsg.content;
 		var qentries = new Array();
@@ -2077,19 +2078,19 @@ if(!startup){
 			check.edit({embeds: [checkEmbed]}); */
 		}
 
-		if(msg.includes('!stats')){
+		if(msg.includes('!stats') && isLive){
 			var dbchannel = await client.channels.cache.get(dbchan);
 			let astats = await dbchannel.messages.fetch(stats);
 			var totalmoved = astats.content.split(',')[0];
 			var nftsmoved = astats.content.split(',')[1];
 			var maxdaymove = astats.content.split(',')[2];
 			var statfooter = 'Stat record began July 27, 2022';
-			var deTitle = 'AUCTION HAUS STATS'
+			var deTitle = '<#' + auctionchan +'> STATS';
 			let sEmbed = new MessageEmbed()
 								.setColor(infocolor)
 								.setTitle(deTitle)
 								.setThumbnail(botimg)
-								.setFooter(statfooter)
+								.setFooter({text: statfooter})
 								.addFields(
 									{ name: 'TOTAL LRC MOVED', value: totalmoved, inline: true},
 									{ name: 'NFTS MOVED: ', value: nftsmoved, inline: true },
@@ -2106,7 +2107,7 @@ if(!startup){
 				client.channels.cache.get(dbchan).send('NEW DATABASE MESSAGE CREATED');
 			}
 
-			if(msg.includes('!setstats')){
+			if(msg.includes('!setstats') && isLive){
 				var dbchannel = await client.channels.cache.get(dbchan);
 				let astats = await dbchannel.messages.fetch(stats);
 				let initialstats = '1515, 50, 1515';
@@ -2322,7 +2323,7 @@ if(!startup){
 									nextauction = await getNextAuction();
 									if(kill){kill = false;} //reset if last auction was killed
 									if(nextauction == 'NO QUEUE'){
-										console.log('[Finding Next Auction] ...next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
+										//console.log('[Finding Next Auction] ...next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
 										await sleep(timeBetweenQueueCheck);
 									}
 							}while(nextauction == 'NO QUEUE');
@@ -2382,6 +2383,8 @@ if(!startup){
 							kill = false;			
 
 							var authormsg = 'Åuction ╙isting ïnteractive Gangsta';
+
+
 							let iEmbed = new MessageEmbed()
 								.setColor(infocolor)
 								.setTitle('['+ auctiontext + ' STARTED]')
@@ -2389,7 +2392,7 @@ if(!startup){
 								.setDescription(descript)
 								.setThumbnail(botimg)
 								.setFooter({text: 'bid commands: !bid, !bit, !biddup [for help: !help]'});
-								//.setFooter({text: 'SELLER: ' + seller });
+								
 								let achan = await client.channels.cache.get(auctionchan);
 								let introEmbed = achan.send({ embeds: [iEmbed] });
 								achan.send('Yo! <@' + sellerid + '>... u iz up!!! Lez do dis!');
@@ -2423,7 +2426,6 @@ if(!startup){
 							
 							minsleft = minsleft % 60;
 	
-							var timeleft = '';
 							if(daysleft > 4){
 								timeleft = daysleft + "d" + hoursleft + "h" + minsleft + "m";
 							} else{
@@ -2442,9 +2444,34 @@ if(!startup){
 							}else{
 								footertxt = '[' + auctiontext + '] \n' + 'SELLER: ' + seller +'\nfor help, type: !help\naliG.loopring.eth';
 							}
-							
+
 							var authormsg = 'NO BIDS YET';
-	
+							
+							const row = new MessageActionRow()
+							.addComponents(
+
+								new MessageButton()
+								.setLabel('LINK')
+								.setURL(nfturl)
+								.setStyle('LINK'),
+
+								new MessageButton()
+								.setCustomId('TIME')
+								.setLabel(timeleft)
+								.setStyle('DANGER'),
+
+								new MessageButton()
+								.setCustomId('HIGHBID')
+								.setLabel('0 LRC')
+								.setStyle('SUCCESS'),
+
+								new MessageButton()
+								.setCustomId('Help')
+								.setLabel('HELP')
+								.setStyle('PRIMARY'),
+
+							);
+
 							let aEmbed = new MessageEmbed()
 								.setColor(embedColor)							
 								.setTitle(title)
@@ -2457,7 +2484,7 @@ if(!startup){
 									{ name: 'HIGH BIDDER', value: highbidder, inline: true}
 									)
 								.setFooter({text: ''+ footertxt});
-							achan.send({ embeds: [aEmbed] }).then(auctionEmbed => {
+							achan.send({ embeds: [aEmbed]}).then(auctionEmbed => {  //achan.send({ embeds: [aEmbed], components: [row] })
 								dbSet(auctionEmbed.id, "0", 'N/A', reserve,'N/A'); //, startTime, endTime);
 							});
 				
@@ -2565,8 +2592,37 @@ if(!startup){
 											var endimage;
 											updateEmbed.setAuthor({name: authormsg});
 											updateEmbed.setColor(endcolor);
+
+											const rowend = new MessageActionRow()
+											.addComponents(
+				
+												new MessageButton()
+												.setLabel('LINK')
+												.setURL(nfturl)
+												.setStyle('LINK'),
+				
+												new MessageButton()
+												.setCustomId('TIME')
+												.setLabel('ENDED')
+												.setStyle('DANGER')
+												.setDisabled(true),
+				
+												new MessageButton()
+												.setCustomId('HIGHBID')
+												.setLabel(winningbid + ' LRC')
+												.setStyle('SUCCESS')
+												.setDisabled(true),
+				
+												new MessageButton()
+												.setCustomId('Help')
+												.setLabel('HELP')
+												.setStyle('PRIMARY'),
+				
+											);
+
+											
 											msgembed.edit(new MessageEmbed(updateEmbed));
-											msgembed.edit({embeds: [updateEmbed]});
+											msgembed.edit({embeds: [updateEmbed]}); //, components: [rowend]});
 											
 											
 												winningbidder = amsg.split(',')[2];	
@@ -2591,6 +2647,8 @@ if(!startup){
 														usernotfound = true;
 														console.log('user not found');
 													}; 
+
+													console.log('spot 1');
 													var winningusername;
 														//let user = await client.users.cache.get(sellerid).catch(usernotfound = true);
 														if(usernotfound){
@@ -2600,57 +2658,64 @@ if(!startup){
 														}
 
 
-
+														console.log('spot 2');
 													
 
 													//dm seller a summary
-													user.send('**' + title + '** sold for **' + winningbid + ' LRC** ➡️  ' + winningusername);
-
-													// send sale message to sales channel
-
-													let schan = await client.channels.cache.get(saleschan);
 													try{
-														schan.send(seller + ' sold **' + title + '** for **' + winningbid + ' LRC** ➡️  ' + winningusername); 
+														user.send('**' + title + '** sold for **' + winningbid + ' LRC** ➡️  ' + winningusername);
 													}catch(err){
-														console.log(err);
+														console.log('Error during Summary DM: ' + err);
 													}
 
+													if(isLive){
+														// send sale message to sales channel
+														let schan = await client.channels.cache.get(saleschan);
+														try{
+															schan.send(seller + ' sold **' + title + '** for **' + winningbid + ' LRC** ➡️  ' + winningusername); 
+														}catch(err){
+															console.log('Error during Summary post: ' + err);
+														}
 
-													let astats = await dbchannel.messages.fetch(stats);
-													let smsg = astats.content
-													let totallrc = smsg.split(',')[0];
-													let totalnfts = smsg.split(',')[1];
-													let maxdaysales = smsg.split(',')[2];
+														console.log('spot 3');
+
+														let astats = await dbchannel.messages.fetch(stats);
+														let smsg = astats.content
+														let totallrc = smsg.split(',')[0];
+														let totalnfts = smsg.split(',')[1];
+														let maxdaysales = smsg.split(',')[2];
+
+														//update total lrc moved
+														totallrc = +totallrc + +winningbid;
+
+														//update total nfts moved
+														totalnfts = +totalnfts + 1;
+														console.log('spot 4');
+														//check if max day sales were broken
+														let today = moment();
+														if(today.isSame(currentday,"day")){
+															daysales = daysales + +winningbid;
+															console.log('[CURRENT DAY SALES] ' + daysales);
+															if(+daysales > +maxdaysales){
+																maxdaysales = daysales;
+																console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
+															}
+														}else{
+															if(+daysales > +maxdaysales){
+																maxdaysales = daysales;
+																console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
+															}
+															daysales = 0;
+															currentday = moment();
+															console.log('starting daily reset...');
+															dailyReset();
+															console.log('daily reset started...');
+														}
+														console.log('spot 4');
+														let newstatsmsg = totallrc + ',' + totalnfts + ',' + maxdaysales;
+														astats.edit(newstatsmsg);
+													}
 													
-													//update total lrc moved
-													totallrc = +totallrc + +winningbid;
-
-													//update total nfts moved
-													totalnfts = +totalnfts + 1;
-
-													//check if max day sales were broken
-													let today = moment();
-													if(today.isSame(currentday,"day")){
-														daysales = daysales + +winningbid;
-														console.log('[CURRENT DAY SALES] ' + daysales);
-														if(+daysales > +maxdaysales){
-															maxdaysales = daysales;
-															console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
-														}
-													}else{
-														if(+daysales > +maxdaysales){
-															maxdaysales = daysales;
-															console.log('[NEW RECORD] 24 HR SALES: ' + maxdaysales);
-														}
-														daysales = 0;
-														currentday = moment();
-														console.log('starting daily reset...');
-														dailyReset();
-														console.log('daily reset started...');
-													}
-
-													let newstatsmsg = totallrc + ',' + totalnfts + ',' + maxdaysales;
-													astats.edit(newstatsmsg);
 												}
 
 											} else{
@@ -2723,8 +2788,36 @@ if(!startup){
 										}
 										
 
+
+										var rowupdate = new MessageActionRow()
+											.addComponents(
+				
+												new MessageButton()
+												.setLabel('LINK')
+												.setURL(nfturl)
+												.setStyle('LINK'),
+				
+												new MessageButton()
+												.setCustomId('TIME')
+												.setLabel(timeleft)
+												.setStyle('DANGER')
+												.setDisabled(true),
+				
+												new MessageButton()
+												.setCustomId('HIGHBID')
+												.setLabel(highbid + ' LRC')
+												.setStyle('SUCCESS')
+												.setDisabled(true),
+				
+												new MessageButton()
+												.setCustomId('Help')
+												.setLabel('HELP')
+												.setStyle('PRIMARY'),
+				
+											);
+
 										msgembed.edit(new MessageEmbed(updateEmbed));
-										msgembed.edit({embeds: [updateEmbed]});
+										msgembed.edit({embeds: [updateEmbed]}); //, components: [rowupdate]});
 										updateEmbed.setThumbnail(imgurl);
 										updateEmbed.setImage();
 	
@@ -2911,6 +3004,35 @@ if(!startup){
 						authormsg = authormsg.split('').join(' ');
 						updateEmbed.setAuthor({name: authormsg})
 						updateEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true }
+
+						const rowend = new MessageActionRow()
+						.addComponents(
+
+							new MessageButton()
+							.setLabel('LINK')
+							.setURL(nfturl)
+							.setStyle('LINK'),
+
+							new MessageButton()
+							.setCustomId('TIME')
+							.setLabel(timeleft)
+							.setStyle('DANGER')
+							.setDisabled(true),
+
+							new MessageButton()
+							.setCustomId('HIGHBID')
+							.setLabel(highbid + ' LRC')
+							.setStyle('SUCCESS')
+							.setDisabled(true),
+
+							new MessageButton()
+							.setCustomId('Help')
+							.setLabel('HELP')
+							.setStyle('PRIMARY'),
+
+						);
+
+
 						msgembed.edit(new MessageEmbed(updateEmbed));
 						msgembed.edit({embeds: [updateEmbed]});
 						
