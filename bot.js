@@ -2484,7 +2484,7 @@ if(!startup){
 									{ name: 'HIGH BIDDER', value: highbidder, inline: true}
 									)
 								.setFooter({text: ''+ footertxt});
-							achan.send({ embeds: [aEmbed]}).then(auctionEmbed => {  //achan.send({ embeds: [aEmbed], components: [row] })
+							await achan.send({ embeds: [aEmbed]}).then(auctionEmbed => {  //achan.send({ embeds: [aEmbed], components: [row] })
 								dbSet(auctionEmbed.id, "0", 'N/A', reserve,'N/A'); //, startTime, endTime);
 							});
 				
@@ -2946,6 +2946,9 @@ if(!startup){
 				let amsg = dbmsg.content;
 				let isOverride = false;
 
+
+//amsg is not being set in a timely manner
+
 				if(!(amsg == 'NO CURRENT AUCTION') && !(auctionEnded)){
 					if(!(client.user.presence.status == 'dnd')){
 						client.user.setStatus('dnd');
@@ -3143,12 +3146,12 @@ if(!startup){
 						}
 					}
 				} else{
-					message.reply('No current awkshun, so whatcha bittin on?');
+					message.reply('No awkshun found, whatcha bittin on?');
 				}
 
 			}else{
 				if(kill == true || auctionEnded){
-					message.reply('No current awkshun, so whatcha bittin on?');
+					message.reply('No awkshun found');
 				}else{
 					console.log('ineligible bidder: special event');
 					let sorrybra = await message.reply('Sorry bra, dis iz a limited access event.');
