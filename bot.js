@@ -3102,7 +3102,7 @@ if(!startup){
 						} else if(bid == 421){
 							bidmsg = bidmsg + '\n *I call this my ***close enuff puff***';
 						} else if(bid == 456){
-							bidmsg = bidmsg + '\n *Yo! ow bout 789??';
+							bidmsg = bidmsg + '\n *Yo! ow bout 789??*';
 						} else if(bid == 666){
 							bidmsg = bidmsg + '\n *ooO, me cousin Rhonda haz dat tattoo. She a beast.*';
 						} else if(bid == 741){
@@ -3116,7 +3116,7 @@ if(!startup){
 						} else if(bid == 1000){
 							bidmsg = bidmsg + '\n *Ow wheez talkin!*';
 						} else if(bid == 1111){
-							bidmsg = bidmsg + '\n *Yo, me Julie... 1111... makum dem wishz...';
+							bidmsg = bidmsg + '\n *Yo, me Julie... 1111... makum dem wishz...*';
 						} else if(bid == 1337){
 							bidmsg = bidmsg + '\n *b00y4k0rn5h4!*';
 						} else if(bid == 2020){
