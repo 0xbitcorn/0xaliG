@@ -1764,6 +1764,13 @@ async function getNextAuction() {
 		
 		if(qmsg == 'NO QUEUE'){return qmsg;}
 		qmsg = qmsg.replace(processingauction,'').replace(',,',',').replace(/\s+/g, ''); //remove auction that is currently processing
+		qmsg = qmsg.trim();
+
+		if(qmsg.slice(-1) == ','){
+			console.log(qmsg);
+			qmsg = qmsg.slice(0,qmsg.length() - 1);
+			console.log('removed last comma' + qmsg);
+		}
 
 		if(qmsg.includes(',')){
 			qentries = qmsg.replace('dm','').split(','); 
@@ -2072,7 +2079,7 @@ if(!startup){
 			var nftsmoved = astats.content.split(',')[1];
 			var maxdaymove = astats.content.split(',')[2];
 			var statfooter = 'Stat record began July 27, 2022';
-			var deTitle = '<#' + auctionchan +'> STATS';
+			var deTitle = 'AUCTION HAUS STATS';
 			let sEmbed = new MessageEmbed()
 								.setColor(infocolor)
 								.setTitle(deTitle)
