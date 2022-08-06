@@ -19,7 +19,6 @@ client.once('ready', () =>{
 	setGlobals();
 	clearQueueMsg(); // clear current queue message (will repopulate)
 	ClearDatabase(); // clear current auction message and start listener
-	//dailyReset();	 // invokes a daily reset of the limits
 })
 
 client.on('error', console.log)
@@ -933,6 +932,7 @@ async function killedAuction(){
 
 
 async function ClearDatabase(initialstart = true){
+		processingauction = '';
 		client.user.setStatus('online');
 		client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
 		let dbchannel = await client.channels.cache.get(dbchan);
@@ -1173,7 +1173,6 @@ async function queuemsgcheck(firstpass = true){
 	  if(qupdated){
 		  if(+qmsg.length < 1){qmsg = 'NO QUEUE';}
 		  console.log('Updating Queue Message to: ' + qmsg);
-		  console.log('editing dbmsg for queuemsgcheck');
 		  dbmsg.edit(qmsg);
 		  await sleep(1000); // give it a second to make sure it's updated
 	  }
@@ -1787,67 +1786,73 @@ async function getNextAuction() {
 			return parseInt(a) - parseInt(b);
 		});
 
-		console.log('getting next auction from these: ' + qentries);
-
-		await asyncSome(qentries, async (i) => {
-			var qchannel = await client.channels.cache.get(queuechan);
-			
-			try{
-				if(forcestart.length > 0){i = forcestart; itemselected = forcestart;}
-				//console.log('fetching msg: ' + i);
-				queueitem = await qchannel.messages.fetch(i.replace('dm',''));
-				qembed = await queueitem.embeds[0];
-					if(forcestart.length > 0){
-						console.log('force starting: ' + forcestart);
-						forcestart = '';
-						return true;
-					}
-					//console.log('embed timestamp: ' + qembed.timestamp);
-					if(qembed.timestamp == null){
-						itemselected = i;
-						return true;}
-					let now = moment();
-	
-					if(now.isSameOrAfter(qembed.timestamp)){
-						itemselected = i;
-						return true;
-					}; 
-			}catch(err){
-					console.log('had error: ' + err);
-				//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
-					console.log('removing item: ' + i);
-					console.log('qmsg: ' + qmsg);
-					qmsg = qmsg.replace(/\s+/g, '');
-					var endsWithNum = false;
-
-					//temporarily removing this....
-					/* do{
-						endsWithNum = isNaN(qmsg.slice(-1)) ? false : true;
-						if(!(endsWithNum)){
-							qmsg = qmsg.slice(0,-1);
-							console.log('trimmed last character from qmsg: ' + qmsg);
+		if(qentries == ''){
+			qmsg = 'NO QUEUE';
+			await dbmsg.edit(qmsg);
+			return qmsg;
+		}else{
+			console.log('Getting next auction from: ' + qentries);
+		
+			await asyncSome(qentries, async (i) => {
+				var qchannel = await client.channels.cache.get(queuechan);
+				
+				try{
+					if(forcestart.length > 0){i = forcestart; itemselected = forcestart;}
+					//console.log('fetching msg: ' + i);
+					queueitem = await qchannel.messages.fetch(i.replace('dm',''));
+					qembed = await queueitem.embeds[0];
+						if(forcestart.length > 0){
+							console.log('force starting: ' + forcestart);
+							forcestart = '';
+							return true;
 						}
-					}while(endsWithNum) */
+						//console.log('embed timestamp: ' + qembed.timestamp);
+						if(qembed.timestamp == null){
+							itemselected = i;
+							return true;}
+						let now = moment();
+		
+						if(now.isSameOrAfter(qembed.timestamp)){
+							itemselected = i;
+							return true;
+						}; 
+				}catch(err){
+						console.log('had error: ' + err);
+					//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
+						console.log('removing item: ' + i);
+						console.log('qmsg: ' + qmsg);
+						qmsg = qmsg.replace(/\s+/g, '');
+						var endsWithNum = false;
 
-					if(qmsg == i || qmsg == 'dm'+i){
-						console.log('qmsg removing via method 1');
-						qmsg = 'NO QUEUE';
-						dbmsg.edit(qmsg);
-					}else{
-						console.log('qmsg removing via method 2');
-						qmsg = qmsg.replace('dm'+i,'').replace(i,'').replace(',,',',').replace(', ','');
-						if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
-						if(qmsg.charAt(qmsg.length) == ' '){
-							qmsg = qmsg.slice(0,-1);
-						}
-						if(qmsg.charAt(qmsg.length) == ','){
-							qmsg = qmsg.slice(0,-1);
-						}
-						console.log('editing dbmsg for asyncSome');
-						dbmsg.edit(qmsg);
-					}					
-			}
-		});
+						//temporarily removing this....
+						/* do{
+							endsWithNum = isNaN(qmsg.slice(-1)) ? false : true;
+							if(!(endsWithNum)){
+								qmsg = qmsg.slice(0,-1);
+								console.log('trimmed last character from qmsg: ' + qmsg);
+							}
+						}while(endsWithNum) */
+
+						if(qmsg == i || qmsg == 'dm'+i){
+							//console.log('qmsg removing via method 1');
+							qmsg = 'NO QUEUE';
+							dbmsg.edit(qmsg);
+						}else{
+							console.log('qmsg removing via method 2');
+							qmsg = qmsg.replace('dm'+i,'').replace(i,'').replace(',,',',').replace(', ','');
+							if(qmsg.charAt(0) == ','){qmsg = qmsg.slice(1);}
+							if(qmsg.charAt(qmsg.length) == ' '){
+								qmsg = qmsg.slice(0,-1);
+							}
+							if(qmsg.charAt(qmsg.length) == ','){
+								qmsg = qmsg.slice(0,-1);
+							}
+							console.log('editing dbmsg for asyncSome');
+							dbmsg.edit(qmsg);
+						}					
+				}
+			});
+		}
 		//if(itemselected == 'N/A'){
 		//	var daybefore = moment.utc().dayOfYear();
 		//	await sleep(15000); //wait 15 seconds 
@@ -2065,16 +2070,6 @@ if(!startup){
 			var dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 			let qmsg = dbmsg.content;
 			message.reply('Current items in queue: ' + qmsg.split(',').length);
-			
-			/* let qchan = await client.channels.cache.get(queuechannel); 
-			let check = await qchan.messages.fetch('981801275811303424');
-			let checkEmbed = await check.embeds[0];
-			let checkimg = checkEmbed.image.url;
-			console.log(checkimg);
-			checkimg = checkimg.replace(gatewayipfs, loopringipfs).replace(/\s+/g,'');
-			checkEmbed.setImage(checkimg);
-			check.edit(new MessageEmbed(checkEmbed));
-			check.edit({embeds: [checkEmbed]}); */
 		}
 
 		if(msg.includes('!stats') && isLive){
@@ -2135,14 +2130,10 @@ if(!startup){
 				message.reply(pmsg.split(',').length + '/42');
 			} */
 
-			if(msg.includes('!clear')){
+			if(msg.includes('!reset')){
 				await clearLimitMsg();
 				await ClearDatabase();
 				await clearQueueMsg();
-			}
-
-			if(msg.includes('!reset')){
-				await clearLimitMsg();
 			}
 
 			//scrape information from website
@@ -2313,7 +2304,10 @@ if(!startup){
 							console.log('Starting Auction Listener');
 							startup = false
 							do{
-									nextauction = await getNextAuction();
+								console.log('processing auction variable: ' + processingauction);
+									if(processingauction == ''){
+										nextauction = await getNextAuction();
+									}
 									if(kill){kill = false;} //reset if last auction was killed
 									if(nextauction == 'NO QUEUE'){
 										//console.log('[Finding Next Auction] ...next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
@@ -2895,7 +2889,9 @@ if(!startup){
 					currentAuctionDuration = 0;
 					await sleep(timeBetweenAuctions);
 					
-					nextauction = await getNextAuction();
+					if(processingauction = ''){
+						nextauction = await getNextAuction();
+					}
 					if(nextauction == 'NO QUEUE'){
 						console.log('queue empty');
 						await client.channels.cache.get(auctionchan).send('any more out there? queue empty.');
