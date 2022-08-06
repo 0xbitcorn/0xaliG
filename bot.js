@@ -515,10 +515,10 @@ var formatTimezone = function formatTimezone(date) {
 // scrape the nft link site to return title and image
 
 async function scrape(nfturl, imgattached = false){	//adjust scope of variables... keep local... use global only for live auction
-	console.log('New Queue Item added');
+	
 	const browser = await puppeteer.launch({});
 	const page = await browser.newPage();
-	console.log(nfturl);
+	//console.log(nfturl);
 	await page.goto(nfturl);
 	var IMAGE_SELECTOR;
 	var VIDEO_SELECTOR;
@@ -554,12 +554,12 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 	var imgcheckcount = 0;
 	while(gotTitle == false && imgcheckcount < 6){
 		imgcheckcount++;
-		if(imgattached==false){console.log('Finding Image...');}
+		if(imgattached==false){console.log('Scraping Image for Queue Item...');}
 		await page.waitForTimeout(3000);
-		console.log('waited for time out');
+		//console.log('waited for time out');
 		if(imgattached==false){
 			try{
-				console.log('checking for image');
+				//console.log('checking for image');
 				imageHref = await page.evaluate((sel) => {
 					console.log('returning');
 					var scrapedurl = document.querySelector(sel).getAttribute('src');
@@ -576,7 +576,7 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 				}else{getTitle = true;}
 
 			}catch{
-				console.log('lexplorer likely found a mp4 or other non-supported file, try loopring');
+				console.log('had issue with lexplorer, trying loopring');
 				IMAGE_SELECTOR = '#__next > main > div > div.pt-12 > div > div > img';
 				TITLE_SELECTOR = IMAGE_SELECTOR;
 				placeholder = 'nft-placeholder.svg';
@@ -589,10 +589,10 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 			}
 
 			if(getTitle){
-				console.log('Getting Title...');
+				//console.log('Getting Title...');
 				if(nfturl.includes('explorer.loopring.io')){
 					imageTitle = await page.evaluate((sel) => {return document.querySelector(sel).getAttribute('alt');}, TITLE_SELECTOR);
-					console.log('imageTitle: ' + imageTitle);
+					//console.log('imageTitle: ' + imageTitle);
 					if(!(imageTitle == null)){gotTitle = true;} 
 				}else{
 					var doCount = 0;
@@ -606,6 +606,7 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 
 	if(gotTitle == true){
 		imageTitle = encodeURI(imageTitle.replace(',','¸'));
+		console.log('New Queue Item added');
 		if(imgattached == true){
 			return imageTitle;	
 		}else{
