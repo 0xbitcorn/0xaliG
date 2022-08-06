@@ -743,7 +743,7 @@ var descriptionText = '';
 		let qmsg = dbmsg.content;
 
 		if(qmsg.split(',').length > queuelimit){
-			message.reply('Sorry man, me be cappt at 90 itemz in das blaiQUEUE... Upgraydz cumming soon!!');
+			message.reply('Sorry man, me be cappt at 90 itemz in das blaiQUEUE.');
 			throw 'avoid 2000 character limit overrun, refuse queue item';
 		}
 
@@ -786,7 +786,7 @@ var descriptionText = '';
 		}
 
 		var details = await scrape(arr[0], bypassImageScrape);
-		console.log('details = ' + details);
+		//console.log('details = ' + details);
 		
 		if(details == 'SCRAPEFAIL'){
 			var failtext = 'Sumthin be wack... Verify dem inputs and commas...';
@@ -820,7 +820,7 @@ var descriptionText = '';
 
 		qTitle = decodeURI(qTitle.replace('¸',','));
 
-		console.log(qTitle + ' qtitle ' + bypassImageScrape + ' bypass? ' + details + ' details');
+		//console.log(qTitle + ' qtitle ' + bypassImageScrape + ' bypass? ' + details + ' details');
 		//gets here... and has a struggle.... then hops into performing queue message validation check.
 
 		var qduration = setLength(arr[1]);
@@ -2320,7 +2320,6 @@ if(!startup){
 					var dbchannel = await client.channels.cache.get(dbchan);
 					var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 					var usernotfound = false;
-					console.log('[Next Auction] ' + nextauction);
 
 							let auctionDeets = new Array();
 							auctionDeets = nextauction.split(',');
@@ -2350,6 +2349,8 @@ if(!startup){
 							title = auctionDeets[4].replace('¸',',');		// NFT TITLE
 							title = decodeURI(title);
 							nfturl = auctionDeets[5];		// NFT LINK ON EXPLORER
+							console.log('[AUCTION] Seller: ' + seller + ' NFT: ' + title + ' (RESERVE = ' + reserve + ')');
+
 							if(!(auctionDeets[6] == null)){
 								nftdescription = auctionDeets[6].replace('¸',',');
 							}else{
