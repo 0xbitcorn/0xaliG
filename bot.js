@@ -2500,6 +2500,7 @@ if(!startup){
 									highbidder = amsg.split(',')[2];		// should this be pulled from database or left to global 
 									
 									let chan = await client.channels.cache.get(auctionchan); 
+									console.log('fetching startmsg');
 									let msgembed = await chan.messages.fetch(startmsg);
 									let updateEmbed = await msgembed.embeds[0];
 									
@@ -2745,6 +2746,7 @@ if(!startup){
 											var updatemsg = amsg.split(',')[4];
 											if(!(updatemsg == 'N/A')){
 												let chan = await client.channels.cache.get(auctionchan); 
+												console.log('fetching updatemsg...');
 												let secondMessage = await chan.messages.fetch(updatemsg);
 												secondMessage.edit(new MessageEmbed(updateEmbed));
 												secondMessage.edit({embeds: [updateEmbed]});
@@ -2810,8 +2812,10 @@ if(!startup){
 									});
 								} else{
 									let chan = await client.channels.cache.get(auctionchan); 
+									console.log('fetching the last message in the auction haus channel...');
 									let messages = await chan.messages.fetch({limit: 1});
 									let lastMessage = messages.first();
+									console.log('checking if embed is the last message in channel');
 									let secondMessage = await chan.messages.fetch(updatemsg);
 									
 									if (lastMessage.id == secondMessage.id){															
@@ -2823,6 +2827,7 @@ if(!startup){
 										}catch(err){
 											console.log(err);
 										}
+										console.log('tried to delete prior embed and posting new...');
 										await achan.send({ embeds: [updateEmbed] }).then(secondMessage => {
 										dbSet(undefined, undefined, undefined, undefined, secondMessage.id); //, startTime, endTime);
 										});
@@ -2971,6 +2976,7 @@ if(!startup){
 				if(+bid > +highbid && +bid < 1374513896 && !(hasLetter) && !(auctionEnded)){
 
 					let chan = await client.channels.cache.get(auctionchan); 
+					console.log('fetching start message from haus to get updateEmbed');
 					let msgembed = await chan.messages.fetch(startmsg);
 					let updateEmbed = await msgembed.embeds[0];			
 					if(bid > 0){
@@ -3016,6 +3022,7 @@ if(!startup){
 						
 
 						if(!(updatemsg == 'N/A')){
+							console.log('fetching secondMessage [line 3025]');
 							let secondMessage = await chan.messages.fetch(updatemsg);															
 							let secondEmbed = await secondMessage.embeds[0];
 							authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
