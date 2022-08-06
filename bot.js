@@ -961,19 +961,6 @@ async function clearQueueMsg(){
 	console.log('Queue message cleared...');
 }
 
-function dailyReset() {
-    var now = moment();
-    var night = moment();
-	night.setDate(new Date().getDate()+1);
-	night.setHours(0,0,0);
-    var msToMidnight = night.getTime() - now.getTime();
-
-    setTimeout(function() {
-    	clearLimitMsg();              //      <-- This is the function being called at midnight.
-        dailyReset();    //      Then, reset again next midnight.
-    }, msToMidnight);
-}
-
 // process database message
 function dbCurrent(str, delimiter = ",") {
   var arr = str.split(delimiter);
@@ -2146,12 +2133,6 @@ if(!startup){
 				await clearLimitMsg();
 			}
 
-			if(msg.includes('!limit')){
-				console.log('starting daily reset...');
-				dailyReset();
-				console.log('daily reset started...');
-			}
-
 			//scrape information from website
 			/* if(msg.includes('!scrape')){
 			var details = await scrape(msg.split(' ')[1]);
@@ -2648,7 +2629,6 @@ if(!startup){
 														console.log('user not found');
 													}; 
 
-													console.log('spot 1');
 													var winningusername;
 														//let user = await client.users.cache.get(sellerid).catch(usernotfound = true);
 														if(usernotfound){
@@ -2657,8 +2637,6 @@ if(!startup){
 															winningusername = winninguser.username;
 														}
 
-
-														console.log('spot 2');
 													
 
 													//dm seller a summary
@@ -2677,8 +2655,6 @@ if(!startup){
 															console.log('Error during Summary post: ' + err);
 														}
 
-														console.log('spot 3');
-
 														let astats = await dbchannel.messages.fetch(stats);
 														let smsg = astats.content
 														let totallrc = smsg.split(',')[0];
@@ -2690,7 +2666,6 @@ if(!startup){
 
 														//update total nfts moved
 														totalnfts = +totalnfts + 1;
-														console.log('spot 4');
 														//check if max day sales were broken
 														let today = moment();
 														if(today.isSame(currentday,"day")){
@@ -2708,7 +2683,7 @@ if(!startup){
 															daysales = 0;
 															currentday = moment();
 															console.log('starting daily reset...');
-															dailyReset();
+															await clearLimitMsg();
 															console.log('daily reset started...');
 														}
 														console.log('spot 4');
@@ -2999,9 +2974,9 @@ if(!startup){
 					let msgembed = await chan.messages.fetch(startmsg);
 					let updateEmbed = await msgembed.embeds[0];			
 					if(bid > 0){
-						console.log('[before set] high bid: ' + highbid + ' bid: ' + bid );
+						//console.log('[before set] high bid: ' + highbid + ' bid: ' + bid );
 						highbid = bid;
-						console.log('[after set] high bid: ' + highbid + ' bid: ' + bid );
+						//console.log('[after set] high bid: ' + highbid + ' bid: ' + bid );
 
 						authormsg = '>>>HIGH BID = ' + highbid + ' LRC';
 						authormsg = authormsg.split('').join(' ');
@@ -3059,7 +3034,7 @@ if(!startup){
 							bidmsg = 'Yo, check it... I set dat bid at ' + bid + ' for my man ' + highbidder + '. Now youze keep droppin dem bits!'
 							dbSet(undefined, bid, highbidder); //, undefined, undefined ,undefined);
 						}else if(!(auctionEnded)){
-							console.log('high bid: ' + highbid + ' bid variable: ' + bid);
+							//console.log('high bid: ' + highbid + ' bid variable: ' + bid);
 							bidmsg = '[NEW HIGH BID] ' + bid +' LRC by <@' + message.author + '>';
 							dbSet(undefined, bid, message.author); //, undefined, undefined ,undefined);
 						}
