@@ -1373,7 +1373,7 @@ if(currenttime.isAfter(nextshift)){
 
 
 			try{
-				console.log('fetching: ' + auctionInfo[i].messageID);
+				//console.log('fetching: ' + auctionInfo[i].messageID);
 				qadjust = await qchannel.messages.fetch(auctionInfo[i].messageID);
 			}catch{
 				fetchfailed = true;
@@ -1450,11 +1450,11 @@ if(currenttime.isAfter(nextshift)){
 			if(!(fetchfailed)){
 				try{
 					let shiftQembed = await qadjust.embeds[0];
-					console.log('adjusting timestamp for queue item: ' + auctionInfo[i].messageID);
+					//console.log('Adjusting Item: ' + auctionInfo[i].messageID);
 					await shiftQembed.setTimestamp(moment(auctionInfo[i].starttime));
 					qadjust.edit(new MessageEmbed(shiftQembed));
 					qadjust.edit({embeds: [shiftQembed]});
-					console.log('queue item timestamp adjusted: ' + auctionInfo[i].messageID);
+					console.log('Timestamp Adjusted: ' + auctionInfo[i].messageID);
 				}catch{
 					console.log('error during embed shift for:'  + auctionInfo[i].messageID);
 				}
@@ -1466,7 +1466,7 @@ if(currenttime.isAfter(nextshift)){
 		}
 	}
 
-	if(firstpass){console.log('Checked for Auction Time Conflicts');}
+	if(firstpass){console.log('Auction Time Conflict Resolution Complete');}
 
 /* 
 
@@ -1791,7 +1791,7 @@ async function getNextAuction() {
 			await dbmsg.edit(qmsg);
 			return qmsg;
 		}else{
-			console.log('Getting next auction from: ' + qentries);
+			console.log('Getting Next Auction From: ' + qentries);
 		
 			await asyncSome(qentries, async (i) => {
 				var qchannel = await client.channels.cache.get(queuechan);
