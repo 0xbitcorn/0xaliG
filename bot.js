@@ -942,7 +942,6 @@ async function ClearDatabase(initialstart = true){
 
 		if(initialstart){
 			await client.channels.cache.get(queuechan).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
-			console.log('Current auction message cleared...');
 		}
 	}
 
@@ -1860,11 +1859,17 @@ async function getNextAuction() {
 		//	console.log(itemselected);
 		//}
 		if(itemselected == 'N/A'){
+			if(firstpass){
+				console.log('No auction up yet; will continue to check every ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
+			}
+
 			firstpass = false;
-			console.log('No auction up yet; next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
+			
 			await sleep(timeBetweenQueueCheck);
 		}
 	}while(itemselected == 'N/A');
+
+
 if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	if(qmsg == itemselected){
@@ -1890,10 +1895,8 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	
 
 	qimage = qimage.replace(gatewayipfs,loopringipfs);
-	
-	//console.log('Pushing current auction details to database');
-	
-	//console.log('Initiating Start Alert');
+		
+	console.log('Found auction, Initiating Start Alert');
 	await dmAuctionStart(queueitem.id); 	//sending go time alert
 	console.log('done with dm auction alerts... processingDMs: ' + processingDMs);
 	
