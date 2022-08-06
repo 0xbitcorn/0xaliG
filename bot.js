@@ -1611,13 +1611,13 @@ async function dmAuctionStart(alertMsg){
 	try{
 		console.log('Processing GO TIME DM alerts for: ' + alertMsg);
 		var dmqchannel = await client.channels.cache.get(queuechan);
-		console.log('got channel');
+		//console.log('got channel');
 		var dmmsg = await dmqchannel.messages.fetch(alertMsg);
-		console.log('got message');
+		//console.log('got message');
 		var dmreaction = await dmmsg.reactions.cache.get('🟢');
-		console.log('got reactions, count: ' + dmreaction.count);
+		//console.log('got reactions, count: ' + dmreaction.count);
 		var dmusers = await dmreaction.users.fetch();
-		console.log('got users');
+		//console.log('got users');
 		var dmuserlist = 'YO!!!! 🟢 IZ GO TIME 🟢 ';
 
 
@@ -1654,7 +1654,7 @@ async function dmAuctionStart(alertMsg){
 	}
 
 
-	console.log('done processing go time');
+	//console.log('done processing go time');
 	processingDMs = false;
 }
 
@@ -1899,14 +1899,14 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 		
 	console.log('Found auction, Initiating Start Alert');
 	await dmAuctionStart(queueitem.id); 	//sending go time alert
-	console.log('done with dm auction alerts... processingDMs: ' + processingDMs);
+	//console.log('done with dm auction alerts... processingDMs: ' + processingDMs);
 	
 	while(processingDMs){
 		console.log('waiting for DM process to finish');
 		await sleep(1000);
 	}
 
-	console.log('past sleep');
+	//console.log('past sleep');
 
 	let auctiondetails = qseller + ',' + qduration + ',' + qreserve + ',' + qimage + ',' + qtitle + ',' + qurl;
 	if(!(qdescription == null)){auctiondetails = auctiondetails + ',' + qdescription;}
