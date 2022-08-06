@@ -936,9 +936,10 @@ async function ClearDatabase(initialstart = true){
 		client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
-		console.log('editing dbmsg for ClearDatabase');
-		await dbmsg.edit('NO CURRENT AUCTION');
 		
+		await dbmsg.edit('NO CURRENT AUCTION');
+		console.log('Current auction message cleared...');
+
 		if(initialstart){
 			await client.channels.cache.get(queuechan).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
 			console.log('Current auction message cleared...');
@@ -948,7 +949,7 @@ async function ClearDatabase(initialstart = true){
 async function clearLimitMsg(){
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(limitdbmsg);
-		console.log('editing dbmsg for clearLimitMsg');
+		console.log('editing dbmsg for clearLimitMsg called from the function');
 		await dbmsg.edit('LIMIT RESET');
 		console.log('Limits reset...');
 }
@@ -956,7 +957,7 @@ async function clearLimitMsg(){
 async function clearQueueMsg(){
 	let dbchannel = await client.channels.cache.get(dbchan);
 	let dbmsg = await dbchannel.messages.fetch(queuedbmsg);
-	console.log('editing dbmsg for clearQueueMsg');
+	//console.log('editing dbmsg for clearQueueMsg');
 	await dbmsg.edit('NO QUEUE');
 	console.log('Queue message cleared...');
 }
@@ -1320,7 +1321,7 @@ var currenttime = moment();
 //triggering too often
 
 if(currenttime.isAfter(nextshift)){
-	console.log('shift was scheduled for: ' + nextshift + ' and current time is ' + currenttime );
+	//console.log('shift was scheduled for: ' + nextshift + ' and current time is ' + currenttime );
 	nextshift = moment().add(1, 'minute');
 
 	// sort by time created... move messages created first to top priority (earlier in the array)
@@ -1342,7 +1343,7 @@ if(currenttime.isAfter(nextshift)){
 	//adjust the time shown to now + currentAuctionDuration between
 	var qadjust;
 	const presenttime = moment();  //set as constant to avoid it changing
-	console.log('current time prior to diff calc: ' + presenttime);
+	//console.log('current time prior to diff calc: ' + presenttime);
 
 	//first lets make sure all are not in the past:
 	for(i=0; i < auctionInfo.length; i++){
@@ -1860,7 +1861,7 @@ async function getNextAuction() {
 		//}
 		if(itemselected == 'N/A'){
 			firstpass = false;
-			console.log('[Finding Auction On Deck] ...next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
+			console.log('No auction up yet; next check in ' + (timeBetweenQueueCheck / 1000) +  ' seconds...');
 			await sleep(timeBetweenQueueCheck);
 		}
 	}while(itemselected == 'N/A');
