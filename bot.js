@@ -1330,7 +1330,7 @@ if(currenttime.isAfter(nextshift)){
 
 	var timeconflict = false;
 
-	console.log(auctionInfo);
+	//console.log(auctionInfo);
 
 	//go through and check each item... make sure it doesn't conflict with others... 
 	//check from lowest priority (most apt to move) to last item (that won't change.)
@@ -1348,22 +1348,22 @@ if(currenttime.isAfter(nextshift)){
 	for(i=0; i < auctionInfo.length; i++){
 		if(moment(auctionInfo[i].starttime).isBefore(presenttime)){
 
-			console.log('present1: ' + presenttime);
+			//console.log('present1: ' + presenttime);
 			let difftonow = moment(presenttime);
-			console.log('present2: ' + presenttime);
+			//console.log('present2: ' + presenttime);
 
-			console.log('diff1: ' + difftonow);
+			//console.log('diff1: ' + difftonow);
 			difftonow.subtract(moment(auctionInfo[i].starttime));
-			console.log('diff2: ' + difftonow);
+			//console.log('diff2: ' + difftonow);
 
-			console.log('[current time] ' + presenttime);
-			console.log('difference from auctionstart to now: ' + difftonow);
+			//console.log('[current time] ' + presenttime);
+			//console.log('difference from auctionstart to now: ' + difftonow);
 			//let's only add the currentauctionduration + timebetween if this isn't the highest priority item based on time input into queue.
 
-			console.log('encountered auction that was scheduled in the past, shifted to current time')
+			//console.log('encountered auction that was scheduled in the past, shifted to current time')
 			auctionInfo[i].starttime = auctionInfo[i].starttime + difftonow;
 			auctionInfo[i].endtime = auctionInfo[i].endtime + difftonow;
-			console.log(auctionInfo);
+			//console.log(auctionInfo);
 	
 			if(currentAuctionDuration > 0 && i > 0){ 
 				auctionInfo[i].starttime = auctionInfo[i].starttime + currentAuctionDuration + timeBetweenAuctions;
@@ -1385,11 +1385,11 @@ if(currenttime.isAfter(nextshift)){
 			if(!(fetchfailed)){
 				try{
 					let shiftQembed = await qadjust.embeds[0];
-					console.log('adjusting time to current time for queue item: ' + auctionInfo[i].messageID);
+					//console.log('adjusting time to current time for queue item: ' + auctionInfo[i].messageID);
 					await shiftQembed.setTimestamp(moment(auctionInfo[i].starttime));
 					qadjust.edit(new MessageEmbed(shiftQembed));
 					qadjust.edit({embeds: [shiftQembed]});
-					console.log('queue item timestamp adjusted: ' + auctionInfo[i].messageID);
+					//console.log('queue item timestamp adjusted: ' + auctionInfo[i].messageID);
 				}catch{
 					console.log('error during embed shift for:'  + auctionInfo[i].messageID);
 				}
@@ -1398,7 +1398,7 @@ if(currenttime.isAfter(nextshift)){
 			}
 		}
 	}
-	console.log('completed check for queue items in the past' );
+	//console.log('completed check for queue items in the past' );
 	
 	qadjust = null;
 	var updatetime = false;
@@ -1410,7 +1410,7 @@ if(currenttime.isAfter(nextshift)){
 			//check to make sure this doesn't conflict with items of higher priority
 			//i = lower priority
 			//j = higher priority
-			console.log('comparing higher priority: ' + auctionInfo[j].messageID + ' to lower priority ' + auctionInfo[i].messageID);
+			//console.log('comparing higher priority: ' + auctionInfo[j].messageID + ' to lower priority ' + auctionInfo[i].messageID);
 			
 			//if i.start is between j.start and j.end
 			//or if i.end is between j.start and j.end
