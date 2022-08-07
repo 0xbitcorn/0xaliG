@@ -2087,7 +2087,7 @@ if(!startup){
 								.setFooter({text: statfooter})
 								.addFields(
 									{ name: 'TOTAL LRC MOVED', value: totalmoved, inline: true},
-									{ name: 'NFTS MOVED: ', value: nftsmoved, inline: true },
+									{ name: 'NFTS MOVED ', value: nftsmoved, inline: true },
 									{ name: 'MAX DAY SALES', value: maxdaymove, inline: true}
 									)
 
