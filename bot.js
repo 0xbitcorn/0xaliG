@@ -1644,7 +1644,7 @@ async function dmAuctionStart(alertMsg){
 	processingauction = dmmsg.id; //mark which auction is being processed 
 	
 	try{
-		console.log('deleting queue item for auction that is starting: ' + dmmsg.id);
+		//console.log('deleting queue item for auction that is starting: ' + dmmsg.id);
 		await dmmsg.react('🌿');	
 
 	}catch(err){
@@ -1928,9 +1928,9 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 	} */
 
 	try{
-		console.log('editing database message');
+		//console.log('editing database message');
 		dbmsg.edit(qmsg); //removed await here to avoid major delay for some reason
-		console.log('database message edited');
+		//console.log('database message edited');
 	}catch(err){
 		console.log('getNextAuction Error: ' + auctiondetails + '\n\n Error: ' + err);
 	}
@@ -2316,7 +2316,7 @@ if(!startup){
 							}while(nextauction == 'NO QUEUE');
 						}
 
-					console.log('Starting Next Auction');
+					//console.log('Starting Next Auction');
 					var dbchannel = await client.channels.cache.get(dbchan);
 					var dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 					var usernotfound = false;
@@ -3166,7 +3166,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(reaction.partial) await reaction.fetch();
 	if(user.bot){
 		if(user.id == alig && reaction.emoji.name === '🌿'){
-			console.log('removing queue item sent to auction: ' + reaction.message.id);
+			console.log('Removing Item Sent to Auction: ' + reaction.message.id);
 			await reaction.message.delete();
 		}
 		return;
