@@ -1608,7 +1608,7 @@ if(currenttime.isAfter(nextshift)){
 async function dmAuctionStart(alertMsg){
 	processingDMs = true;
 	try{
-		console.log('Processing GO TIME DM alerts for: ' + alertMsg);
+		console.log('GO TIME for: ' + alertMsg);
 		var dmqchannel = await client.channels.cache.get(queuechan);
 		//console.log('got channel');
 		var dmmsg = await dmqchannel.messages.fetch(alertMsg);
@@ -2887,12 +2887,11 @@ if(!startup){
 
 					await ClearDatabase(false); //reset database to blank... it should get populated by getNextAuction
 					console.log('Preparing for next auction');
+					processingauction = '';
 					currentAuctionDuration = 0;
 					await sleep(timeBetweenAuctions);
 					
-					if(processingauction = ''){
-						nextauction = await getNextAuction();
-					}
+					nextauction = await getNextAuction();
 					if(nextauction == 'NO QUEUE'){
 						console.log('queue empty');
 						await client.channels.cache.get(auctionchan).send('any more out there? queue empty.');
