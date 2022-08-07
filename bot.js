@@ -1622,7 +1622,7 @@ async function dmAuctionStart(alertMsg){
 
 		if(dmreaction.count > 1){
 			dmusers.each(async(dmuser) =>{
-				console.log('user found:' + dmuser.id);
+				//console.log('user found:' + dmuser.id);
 					if(!(dmuser.id == botid)){
 						dmuserlist = dmuserlist + '<@'+dmuser.id+'> ';
 							//await reaction.users.remove(user).catch(console.log('error deleting user reaction: GO TIME ALERT'));
@@ -1633,7 +1633,7 @@ async function dmAuctionStart(alertMsg){
 		if(!(dmuserlist == 'YO!!!! 🟢 IZ GO TIME 🟢 ')){
 			var dmachannel = await client.channels.cache.get(auctionchan);
 			await dmachannel.send(dmuserlist);
-			console.log('GO TIME alert sent');
+			//console.log('GO TIME alert sent');
 		} 
 
 	}catch(err){
