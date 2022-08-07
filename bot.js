@@ -569,7 +569,7 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 					return scrapedurl;
 				}, IMAGE_SELECTOR);	
 
-				console.log('hasPlaceholder: ' + hasPlaceholder);
+				//console.log('hasPlaceholder: ' + hasPlaceholder);
 				if(hasPlaceholder){
 					if(!(imageHref.includes(placeholder))){getTitle = true;}
 				}else{getTitle = true;}
@@ -605,7 +605,7 @@ async function scrape(nfturl, imgattached = false){	//adjust scope of variables.
 
 	if(gotTitle == true){
 		imageTitle = encodeURI(imageTitle.replace(',','¸'));
-		console.log('New Queue Item added');
+		console.log('New Queue Item added: ' + imageTitle);
 		if(imgattached == true){
 			return imageTitle;	
 		}else{
