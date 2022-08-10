@@ -1872,13 +1872,13 @@ async function getNextAuction() {
 						// check if tagged with 🌿
 
 						var skipitem = false;
-						var reactcount = await queueitem.reactions.cache.get('🌿').count;
+						var reactcount = await qchannel.messages.fetch(i.replace('dm','')).reactions.cache.get('🌿').count;
 					
 						try{
 							console.log('herb count: ' + reactcount);
 						
 							if(reactcount > 0){
-								var reactusers = await queueitem.reactions.cache.get('🌿').users.fetch();
+								var reactusers = await qchannel.messages.fetch(i.replace('dm','')).reactions.cache.get('🌿').users.fetch();
 								reactusers.each(async(user) =>{
 									if(reactusers.id == botid){
 										skipitem = true;
