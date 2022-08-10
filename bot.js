@@ -2943,7 +2943,7 @@ if(!startup){
 				if(!(processingauction == '')){
 					while(amsg == 'NO CURRENT AUCTION' && !(processingauction == '')){
 						console.log('auction appears live, but database is not populated (sleep 0.5s)');
-						sleep(500);
+						await sleep(500);
 						dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 						amsg = dbmsg.content;
 					}
@@ -3074,7 +3074,7 @@ if(!startup){
 						} else if(bid == 21){
 							bidmsg = bidmsg + '\n *ahhight, dis awkshun can ofishaly drink... Git ya 40 an bottom up!*';
 						} else if(bid == 40){
-							bidmsg = bidmsg + '\n *ahh... a 40, me favorit way to start me day*';
+							bidmsg = bidmsg + '\n *ahh... a 40, me favorit way to start me day* \n ';
 						} else if(bid == 42){
 							bidmsg = bidmsg + '\n *dis... iz the answer me been waitin for*';
 						} else if(bid == 69){
