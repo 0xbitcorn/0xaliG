@@ -1872,11 +1872,13 @@ async function getNextAuction() {
 						// check if tagged with 🌿
 
 						var skipitem = false;
-						var reaction = await queueitem.reactions.cache.get('🌿');
-
+						var reactcount = await queueitem.reactions.cache.get('🌿').count;
+					
 						try{
-							if(reaction.count > 0){
-								var reactusers = await reaction.users.fetch();
+							console.log('herb count: ' + reactcount);
+						
+							if(reactcount > 0){
+								var reactusers = await queueitem.reactions.cache.get('🌿').users.fetch();
 								reactusers.each(async(user) =>{
 									if(reactusers.id == botid){
 										skipitem = true;
@@ -1896,6 +1898,7 @@ async function getNextAuction() {
 							}
 						}catch(err){
 							console.log('no reactions');
+							console.log(err);
 						}
 						
 
