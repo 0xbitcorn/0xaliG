@@ -2080,8 +2080,23 @@ var startup = false;
 
 	// ALI-G STARTUP
 	if(message.author == botid && message.content.includes('Iz awkshun time!')){
-		console.log('Startup Message Sent');
+		console.log('Startup Message Sent');	
 		await message.delete();
+
+		try{
+			const bitcornuser = await client.users.fetch(bitcorn).catch(() => null);
+				
+			if (!bitcornuser) return;
+			let dmcontent = "aliG rebooted";
+			await user.send(dmcontent).catch(() => {
+				console.log("unable to send bitcorn DM");
+			});	
+		}catch(err){
+			console.log('bitcornDM error');
+			console.log(err);
+		}
+
+
 		startup = true;
 		var achan = await client.channels.cache.get(auctionchan);
 		var qchan = await client.channels.cache.get(queuechan);
@@ -3005,7 +3020,7 @@ try{
 				let isOverride = false;
 
 				// new code added 8/9/2022 to handle a delay in setting the database message at auction start
-				if(!(processingauction == '')){
+				if(!(processingauction == '') && amsg == 'NO CURRENT AUCTION'){
 					message.reply('man... u speedy, let me finish this puff, then i gotz you');
 					while(amsg == 'NO CURRENT AUCTION' && !(processingauction == '')){
 						console.log('auction appears live, but database is not populated (sleep 0.5s)');
