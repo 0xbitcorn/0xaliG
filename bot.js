@@ -24,6 +24,10 @@ client.once('ready', () =>{
 client.on('error', console.log)
 client.login(auth.token)
 
+process.on('unhandledRejection', error => {
+	console.error('Unhandled promise rejection:', error);
+});
+
 /////////////////
 //  CONSTANTS  //
 /////////////////
@@ -725,7 +729,9 @@ dbchannel = await client.channels.cache.get(dbchan);
 dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 console.log('editing dbmsg for limitCheck');
 try{
-	await dbmsg.edit(lmsg);
+	await dbmsg.edit(lmsg).catch(error => {
+		console.error('Failed to edit the message:', error);
+});
 }catch(err){
 	console.log('error while editing limit msg');
 	console.log(err);
@@ -888,7 +894,9 @@ var descriptionText = '';
 
 			console.log('editing dbmsg for queueAdd');
 			try{
-				await dbmsg.edit(qmsg);
+				await dbmsg.edit(qmsg).catch(error => {
+					console.error('Failed to edit the message:', error);
+			});
 			}catch(err){
 				console.log('error while performing queueAdd');
 				console.log(err);
@@ -935,7 +943,9 @@ async function ClearDatabase(initialstart = true){
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
 		try{
-			await dbmsg.edit('NO CURRENT AUCTION');
+			await dbmsg.edit('NO CURRENT AUCTION').catch(error => {
+				console.error('Failed to edit the message:', error);
+		});
 			console.log('Current auction message cleared...');	
 		}catch(err){
 			console.log('error while clearing database message');
@@ -952,7 +962,9 @@ async function clearLimitMsg(){
 		let dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 		console.log('editing dbmsg for clearLimitMsg called from the function');
 		try{
-			await dbmsg.edit('LIMIT RESET');
+			await dbmsg.edit('LIMIT RESET').catch(error => {
+				console.error('Failed to edit the message:', error);
+		});
 			console.log('Limits reset...');	
 		}catch(err){
 			console.log('error while clearing limits');
@@ -965,7 +977,9 @@ async function clearQueueMsg(){
 	let dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 	//console.log('editing dbmsg for clearQueueMsg');
 	try{
-		await dbmsg.edit('NO QUEUE');
+		await dbmsg.edit('NO QUEUE').catch(error => {
+			console.error('Failed to edit the message:', error);
+	});
 	console.log('Queue message cleared...');
 	}catch(err){
 		console.log('error while clearing queue');
@@ -1043,7 +1057,9 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 		var dbstr = Array.isArray(db) ? db.join(',') : "NO CURRENT AUCTION";
 		console.log('editing dbmsg for dbSet');
 		try{
-			dbmsg.edit(dbstr);
+			dbmsg.edit(dbstr).catch(error => {
+				console.error('Failed to edit the message:', error);
+		});
 		}catch(err){
 			console.log('error while writing to dbmsg');
 			console.log(err);
@@ -1190,7 +1206,9 @@ async function queuemsgcheck(firstpass = true){
 		  if(+qmsg.length < 1){qmsg = 'NO QUEUE';}
 		  console.log('Updating Queue Message to: ' + qmsg);
 		 try{
-			dbmsg.edit(qmsg);
+			dbmsg.edit(qmsg).catch(error => {
+				console.error('Failed to edit the message:', error);
+		});
 			await sleep(1000); // give it a second to make sure it's updated  
 		 } catch(err){
 			console.log('error while updating queue message');
@@ -1408,8 +1426,12 @@ if(currenttime.isAfter(nextshift)){
 					let shiftQembed = await qadjust.embeds[0];
 					//console.log('adjusting time to current time for queue item: ' + auctionInfo[i].messageID);
 					await shiftQembed.setTimestamp(moment(auctionInfo[i].starttime));
-					qadjust.edit(new MessageEmbed(shiftQembed));
-					qadjust.edit({embeds: [shiftQembed]});
+					qadjust.edit(new MessageEmbed(shiftQembed)).catch(error => {
+						console.error('Failed to edit the message:', error);
+				});
+					qadjust.edit({embeds: [shiftQembed]}).catch(error => {
+						console.error('Failed to edit the message:', error);
+				});
 					//console.log('queue item timestamp adjusted: ' + auctionInfo[i].messageID);
 				}catch{
 					console.log('error during embed shift for:'  + auctionInfo[i].messageID);
@@ -1473,8 +1495,12 @@ if(currenttime.isAfter(nextshift)){
 					let shiftQembed = await qadjust.embeds[0];
 					//console.log('Adjusting Item: ' + auctionInfo[i].messageID);
 					await shiftQembed.setTimestamp(moment(auctionInfo[i].starttime));
-					qadjust.edit(new MessageEmbed(shiftQembed));
-					qadjust.edit({embeds: [shiftQembed]});
+					qadjust.edit(new MessageEmbed(shiftQembed)).catch(error => {
+						console.error('Failed to edit the message:', error);
+				});
+					qadjust.edit({embeds: [shiftQembed]}).catch(error => {
+						console.error('Failed to edit the message:', error);
+				});
 					console.log('Timestamp Adjusted: ' + auctionInfo[i].messageID);
 				}catch{
 					console.log('error during embed shift for:'  + auctionInfo[i].messageID);
@@ -1754,7 +1780,9 @@ async function dmAuctionAlerts(alertMsg) {
 					qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
 					console.log('editing dbmsg for dmAuctionAlerts');
 					try{
-						dbmsg.edit(qmsg);
+						dbmsg.edit(qmsg).catch(error => {
+							console.error('Failed to edit the message:', error);
+					});
 					}catch(err){
 						console.log('error while editing dbmsg for dmAuctionAlerts');
 						console.log(err);
@@ -1816,7 +1844,9 @@ async function getNextAuction() {
 		if(qentries == ''){
 			qmsg = 'NO QUEUE';
 			try{
-				await dbmsg.edit(qmsg);
+				await dbmsg.edit(qmsg).catch(error => {
+					console.error('Failed to edit the message:', error);
+			});
 			}catch(err){
 				console.log('error while setting qmsg to NO QUEUE');
 				console.log(err);
@@ -1845,14 +1875,19 @@ async function getNextAuction() {
 						var reaction = await queueitem.reactions.cache.get('🌿');
 
 						try{
-							if(reaction.count > 1){
+							if(reaction.count > 0){
 								var reactusers = await reaction.users.fetch();
 								reactusers.each(async(user) =>{
 									if(reactusers.id == botid){
 										skipitem = true;
 	
 										try{
-											queueitem.delete();
+											queueitem.delete().catch(error => {
+												// Only log the error if it is not an Unknown Message error
+												if (error.code !== 10008) {
+													console.error('Failed to delete the message:', error);
+												}
+											});
 										}catch(err){
 											console.log('queueitem.delete error [1854]');
 											console.log(err);
@@ -1897,7 +1932,9 @@ async function getNextAuction() {
 							//console.log('qmsg removing via method 1');
 							qmsg = 'NO QUEUE';
 							try{
-								dbmsg.edit(qmsg);
+								dbmsg.edit(qmsg).catch(error => {
+										console.error('Failed to edit the message:', error);
+								});
 							}catch(err){
 								console.log('error while setting dbmsg');
 								console.log(err);
@@ -1914,7 +1951,9 @@ async function getNextAuction() {
 							}
 							console.log('editing dbmsg for asyncSome');
 							try{
-								dbmsg.edit(qmsg);
+								dbmsg.edit(qmsg).catch(error => {
+									console.error('Failed to edit the message:', error);
+							});
 							}catch(err){
 								console.log('error while setting dbmsg');
 								console.log(err);
@@ -1999,7 +2038,9 @@ if(qmsg == 'NO QUEUE'){ return qmsg;}
 
 	try{
 		//console.log('editing database message');
-		dbmsg.edit(qmsg); //removed await here to avoid major delay for some reason
+		dbmsg.edit(qmsg).catch(error => {
+			console.error('Failed to edit the message:', error);
+	}); //removed await here to avoid major delay for some reason
 		//console.log('database message edited');
 	}catch(err){
 		console.log('getNextAuction Error: ' + auctiondetails + '\n\n Error: ' + err);
@@ -2111,7 +2152,12 @@ var startup = false;
 		console.log('Startup Message Sent');	
 		
 		try{
-			await message.delete();
+			await message.delete().catch(error => {
+				// Only log the error if it is not an Unknown Message error
+				if (error.code !== 10008) {
+					console.error('Failed to delete the message:', error);
+				}
+			});
 
 			const bitcornuser = await client.users.fetch(bitcorn).catch(() => null);
 				
@@ -2179,7 +2225,12 @@ if(!startup){
 
 			let statEmbed = message.channel.send({ embeds: [sEmbed] });
 			try{
-				message.delete();
+				message.delete().catch(error => {
+					// Only log the error if it is not an Unknown Message error
+					if (error.code !== 10008) {
+						console.error('Failed to delete the message:', error);
+					}
+				});
 			}catch(err){
 				console.log('delete error [2154]');
 				console.log(err);
@@ -2197,7 +2248,9 @@ if(!startup){
 				let astats = await dbchannel.messages.fetch(stats);
 				let initialstats = '1515, 50, 1515';
 				try{
-					astats.edit(initialstats);
+					astats.edit(initialstats).catch(error => {
+						console.error('Failed to edit the message:', error);
+				});
 				}catch(err){
 					console.log('error while setting stats');
 					console.log(err);
@@ -2706,8 +2759,12 @@ if(!startup){
 											);
 
 											try{
-												msgembed.edit(new MessageEmbed(updateEmbed));
-												msgembed.edit({embeds: [updateEmbed]}); //, components: [rowend]});	
+												msgembed.edit(new MessageEmbed(updateEmbed)).catch(error => {
+													console.error('Failed to edit the message:', error);
+											});
+												msgembed.edit({embeds: [updateEmbed]}).catch(error => {
+													console.error('Failed to edit the message:', error);
+											}); //, components: [rowend]});	
 											}catch(err){
 												console.log('error while editing msgembed');
 												console.log(err);
@@ -2797,7 +2854,9 @@ if(!startup){
 														console.log('spot 4');
 														let newstatsmsg = totallrc + ',' + totalnfts + ',' + maxdaysales;
 														try{
-															astats.edit(newstatsmsg);
+															astats.edit(newstatsmsg).catch(error => {
+																console.error('Failed to edit the message:', error);
+														});
 														}catch(err){
 															console.log('error while updating stat message');
 															console.log(err);
@@ -2861,8 +2920,12 @@ if(!startup){
 												console.log('fetching updatemsg...');
 												let secondMessage = await chan.messages.fetch(updatemsg);
 												try{
-													secondMessage.edit(new MessageEmbed(updateEmbed));
-													secondMessage.edit({embeds: [updateEmbed]});	
+													secondMessage.edit(new MessageEmbed(updateEmbed)).catch(error => {
+														console.error('Failed to edit the message:', error);
+												});
+													secondMessage.edit({embeds: [updateEmbed]}).catch(error => {
+														console.error('Failed to edit the message:', error);
+												});	
 												}catch(err){
 													console.log('error while updating secondMessage [2818]');
 													console.log(err);
@@ -2910,8 +2973,12 @@ if(!startup){
 				
 											);
 try{
-	msgembed.edit(new MessageEmbed(updateEmbed));
-	msgembed.edit({embeds: [updateEmbed]}); //, components: [rowupdate]});
+	msgembed.edit(new MessageEmbed(updateEmbed)).catch(error => {
+		console.error('Failed to edit the message:', error);
+});
+	msgembed.edit({embeds: [updateEmbed]}).catch(error => {
+		console.error('Failed to edit the message:', error);
+}); //, components: [rowupdate]});
 }catch(err){
 	console.log('error while updating msgembed [2867]');
 	console.log(err);
@@ -2941,15 +3008,24 @@ try{
 									
 									if (lastMessage.id == secondMessage.id){															
 										try{
-											secondMessage.edit(new MessageEmbed(updateEmbed));
-											secondMessage.edit({embeds: [updateEmbed]});
+											secondMessage.edit(new MessageEmbed(updateEmbed)).catch(error => {
+												console.error('Failed to edit the message:', error);
+										});
+											secondMessage.edit({embeds: [updateEmbed]}).catch(error => {
+												console.error('Failed to edit the message:', error);
+										});
 										}catch(err){
 											console.log('error while updating secondMessage [2898]');
 											console.log(err);
 										}
 									}else{
 										try{
-											secondMessage.delete();
+											secondMessage.delete().catch(error => {
+												// Only log the error if it is not an Unknown Message error
+												if (error.code !== 10008) {
+													console.error('Failed to delete the message:', error);
+												}
+											});
 										}catch(err){
 											console.log(err);
 										}
@@ -3160,8 +3236,12 @@ try{
 						);
 
 						try{
-							msgembed.edit(new MessageEmbed(updateEmbed));
-							msgembed.edit({embeds: [updateEmbed]});
+							msgembed.edit(new MessageEmbed(updateEmbed)).catch(error => {
+								console.error('Failed to edit the message:', error);
+						});
+							msgembed.edit({embeds: [updateEmbed]}).catch(error => {
+								console.error('Failed to edit the message:', error);
+						});
 						}catch(err){
 							console.log('error while updating msgembed [3109]');
 							console.log(err);
@@ -3177,8 +3257,12 @@ try{
 							secondEmbed.setAuthor({name: authormsg})
 							secondEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true}
 							try{
-								secondMessage.edit(new MessageEmbed(secondEmbed));
-								secondMessage.edit({embeds: [secondEmbed]});	
+								secondMessage.edit(new MessageEmbed(secondEmbed)).catch(error => {
+									console.error('Failed to edit the message:', error);
+							});
+								secondMessage.edit({embeds: [secondEmbed]}).catch(error => {
+									console.error('Failed to edit the message:', error);
+							});
 							}catch(err){
 								console.log('error while editing secondMessage');
 								console.log(err);
@@ -3290,9 +3374,19 @@ try{
 					console.log('ineligible bidder: special event');
 					let sorrybra = await message.reply('Sorry bra, dis iz a limited access event.');
 					try{
-						await message.delete();
+						await message.delete().catch(error => {
+							// Only log the error if it is not an Unknown Message error
+							if (error.code !== 10008) {
+								console.error('Failed to delete the message:', error);
+							}
+						});
 						await sleep(2000);
-						await sorrybra.delete();
+						await sorrybra.delete().catch(error => {
+							// Only log the error if it is not an Unknown Message error
+							if (error.code !== 10008) {
+								console.error('Failed to delete the message:', error);
+							}
+						});
 					}catch(err){
 						console.log('sorrybra delete error');
 						console.log(err);
@@ -3316,7 +3410,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 		if(user.id == alig && reaction.emoji.name === '🌿'){
 			console.log('Removing Item Sent to Auction: ' + reaction.message.id);
 			try{
-				reaction.message.delete();
+				reaction.message.delete().catch(error => {
+					// Only log the error if it is not an Unknown Message error
+					if (error.code !== 10008) {
+						console.error('Failed to delete the message:', error);
+					}
+				});
 			}catch(err){
 				console.log('delete error from herb tag');
 				console.log(err);
@@ -3388,7 +3487,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
 				qmsg = qmsg.replace('dm'+reactmsgid,reactmsgid);
 				console.log('editing dbmsg for subscriberAdd');
 				try{
-					dbmsg.edit(qmsg);
+					dbmsg.edit(qmsg).catch(error => {
+						console.error('Failed to edit the message:', error);
+				});
 				}catch(err){
 					console.log('error while editing dbmsg for subscriberadd');
 					console.log(err);
@@ -3431,7 +3532,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					}
 					console.log('editing dbmsg for auction remove');
 					try{
-						dbmsg.edit(qmsg);
+						dbmsg.edit(qmsg).catch(error => {
+							console.error('Failed to edit the message:', error);
+					});
 					}catch(err){
 						console.log('error while removing auction');
 						console.log(err);
@@ -3440,7 +3543,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					console.log('Queue message was not in database');
 				}
 				try{
-					reaction.message.delete();					
+					reaction.message.delete().catch(error => {
+						// Only log the error if it is not an Unknown Message error
+						if (error.code !== 10008) {
+							console.error('Failed to delete the message:', error);
+						}
+					});				
 				}catch(err){
 					console.log('delete error [3409]');
 					console.log(err);
