@@ -2941,6 +2941,7 @@ if(!startup){
 
 				// new code added 8/9/2022 to handle a delay in setting the database message at auction start
 				if(!(processingauction == '')){
+					message.reply('man... u speedy, let me finish this puff, then i gotz you');
 					while(amsg == 'NO CURRENT AUCTION' && !(processingauction == '')){
 						console.log('auction appears live, but database is not populated (sleep 0.5s)');
 						await sleep(500);
