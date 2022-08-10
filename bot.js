@@ -1773,7 +1773,8 @@ async function getNextAuction() {
 
 		if(qmsg.slice(-1) == ','){
 			console.log(qmsg);
-			qmsg = qmsg.slice(0,qmsg.length() - 1);
+
+			qmsg = qmsg.slice(0,qmsg.length - 1);
 			console.log('removed last comma' + qmsg);
 		}
 
