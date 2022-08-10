@@ -724,7 +724,12 @@ var inputs = qduration + ',' + qdelay;
 dbchannel = await client.channels.cache.get(dbchan);
 dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 console.log('editing dbmsg for limitCheck');
-await dbmsg.edit(lmsg);
+try{
+	await dbmsg.edit(lmsg);
+}catch(err){
+	console.log('error while editing limit msg');
+	console.log(err);
+}
 return inputs;
 
 }
@@ -882,7 +887,13 @@ var descriptionText = '';
 			}
 
 			console.log('editing dbmsg for queueAdd');
-			await dbmsg.edit(qmsg);
+			try{
+				await dbmsg.edit(qmsg);
+			}catch(err){
+				console.log('error while performing queueAdd');
+				console.log(err);
+			}
+			
 			return true;
 			
 		} catch(err){
@@ -917,29 +928,19 @@ async function setMessageValue (_messageID, _targetedChannel) {
     }
 }
 
-
-
-// clear current auction message in database 
-async function killedAuction(){
-
-	client.user.setStatus('online');
-	client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
-	let dbchannel = await client.channels.cache.get(dbchan);
-	let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
-	await dbmsg.edit('NO CURRENT AUCTION');
-	kill = false;
-}
-
-
 async function ClearDatabase(initialstart = true){
 		processingauction = '';
 		client.user.setStatus('online');
 		client.user.setActivity('dis blunt burn...', {type: 'WATCHING'});
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
-		
-		await dbmsg.edit('NO CURRENT AUCTION');
-		console.log('Current auction message cleared...');
+		try{
+			await dbmsg.edit('NO CURRENT AUCTION');
+			console.log('Current auction message cleared...');	
+		}catch(err){
+			console.log('error while clearing database message');
+			console.log(err);
+		}
 
 		if(initialstart){
 			await client.channels.cache.get(queuechan).send('Iz awkshun time!').catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
@@ -950,16 +951,26 @@ async function clearLimitMsg(){
 		let dbchannel = await client.channels.cache.get(dbchan);
 		let dbmsg = await dbchannel.messages.fetch(limitdbmsg);
 		console.log('editing dbmsg for clearLimitMsg called from the function');
-		await dbmsg.edit('LIMIT RESET');
-		console.log('Limits reset...');
+		try{
+			await dbmsg.edit('LIMIT RESET');
+			console.log('Limits reset...');	
+		}catch(err){
+			console.log('error while clearing limits');
+			console.log(err);
+		}
 }
 
 async function clearQueueMsg(){
 	let dbchannel = await client.channels.cache.get(dbchan);
 	let dbmsg = await dbchannel.messages.fetch(queuedbmsg);
 	//console.log('editing dbmsg for clearQueueMsg');
-	await dbmsg.edit('NO QUEUE');
+	try{
+		await dbmsg.edit('NO QUEUE');
 	console.log('Queue message cleared...');
+	}catch(err){
+		console.log('error while clearing queue');
+		console.log(err);
+	}
 }
 
 // process database message
@@ -1178,8 +1189,13 @@ async function queuemsgcheck(firstpass = true){
 	  if(qupdated){
 		  if(+qmsg.length < 1){qmsg = 'NO QUEUE';}
 		  console.log('Updating Queue Message to: ' + qmsg);
-		  dbmsg.edit(qmsg);
-		  await sleep(1000); // give it a second to make sure it's updated
+		 try{
+			dbmsg.edit(qmsg);
+			await sleep(1000); // give it a second to make sure it's updated  
+		 } catch(err){
+			console.log('error while updating queue message');
+			console.log(err);
+		 }
 	  }
 
 	  //if(firstpass){console.log('Processing Auction Alerts');}
@@ -1737,7 +1753,12 @@ async function dmAuctionAlerts(alertMsg) {
 					console.log(alertMsg);
 					qmsg = await qmsg.replace(alertMsg,'dm' + alertMsg);
 					console.log('editing dbmsg for dmAuctionAlerts');
-					dbmsg.edit(qmsg);
+					try{
+						dbmsg.edit(qmsg);
+					}catch(err){
+						console.log('error while editing dbmsg for dmAuctionAlerts');
+						console.log(err);
+					}
 				}
 			}else{
 				console.log('dm processing for users was skipped.');
@@ -1794,7 +1815,12 @@ async function getNextAuction() {
 
 		if(qentries == ''){
 			qmsg = 'NO QUEUE';
-			await dbmsg.edit(qmsg);
+			try{
+				await dbmsg.edit(qmsg);
+			}catch(err){
+				console.log('error while setting qmsg to NO QUEUE');
+				console.log(err);
+			}
 			return qmsg;
 		}else{
 			console.log('Getting Next Auction From: ' + qentries);
@@ -1842,7 +1868,12 @@ async function getNextAuction() {
 						if(qmsg == i || qmsg == 'dm'+i){
 							//console.log('qmsg removing via method 1');
 							qmsg = 'NO QUEUE';
-							dbmsg.edit(qmsg);
+							try{
+								dbmsg.edit(qmsg);
+							}catch(err){
+								console.log('error while setting dbmsg');
+								console.log(err);
+							}
 						}else{
 							console.log('qmsg removing via method 2');
 							qmsg = qmsg.replace('dm'+i,'').replace(i,'').replace(',,',',').replace(', ','');
@@ -1854,7 +1885,12 @@ async function getNextAuction() {
 								qmsg = qmsg.slice(0,-1);
 							}
 							console.log('editing dbmsg for asyncSome');
-							dbmsg.edit(qmsg);
+							try{
+								dbmsg.edit(qmsg);
+							}catch(err){
+								console.log('error while setting dbmsg');
+								console.log(err);
+							}
 						}					
 				}
 			});
@@ -2111,7 +2147,12 @@ if(!startup){
 				var dbchannel = await client.channels.cache.get(dbchan);
 				let astats = await dbchannel.messages.fetch(stats);
 				let initialstats = '1515, 50, 1515';
-				astats.edit(initialstats);
+				try{
+					astats.edit(initialstats);
+				}catch(err){
+					console.log('error while setting stats');
+					console.log(err);
+				}
 			}
 
 
@@ -2615,9 +2656,13 @@ if(!startup){
 				
 											);
 
-											
-											msgembed.edit(new MessageEmbed(updateEmbed));
-											msgembed.edit({embeds: [updateEmbed]}); //, components: [rowend]});
+											try{
+												msgembed.edit(new MessageEmbed(updateEmbed));
+												msgembed.edit({embeds: [updateEmbed]}); //, components: [rowend]});	
+											}catch(err){
+												console.log('error while editing msgembed');
+												console.log(err);
+											}
 											
 											
 												winningbidder = amsg.split(',')[2];	
@@ -2702,7 +2747,12 @@ if(!startup){
 														}
 														console.log('spot 4');
 														let newstatsmsg = totallrc + ',' + totalnfts + ',' + maxdaysales;
-														astats.edit(newstatsmsg);
+														try{
+															astats.edit(newstatsmsg);
+														}catch(err){
+															console.log('error while updating stat message');
+															console.log(err);
+														}
 													}
 													
 												}
@@ -2761,8 +2811,13 @@ if(!startup){
 												let chan = await client.channels.cache.get(auctionchan); 
 												console.log('fetching updatemsg...');
 												let secondMessage = await chan.messages.fetch(updatemsg);
-												secondMessage.edit(new MessageEmbed(updateEmbed));
-												secondMessage.edit({embeds: [updateEmbed]});
+												try{
+													secondMessage.edit(new MessageEmbed(updateEmbed));
+													secondMessage.edit({embeds: [updateEmbed]});	
+												}catch(err){
+													console.log('error while updating secondMessage [2818]');
+													console.log(err);
+												}
 											}
 											//iEmbed.setColor(endcolor);
 											//introEmbed.edit(new MessageEmbed(iEmbed));
@@ -2805,9 +2860,13 @@ if(!startup){
 												.setStyle('PRIMARY'),
 				
 											);
-
-										msgembed.edit(new MessageEmbed(updateEmbed));
-										msgembed.edit({embeds: [updateEmbed]}); //, components: [rowupdate]});
+try{
+	msgembed.edit(new MessageEmbed(updateEmbed));
+	msgembed.edit({embeds: [updateEmbed]}); //, components: [rowupdate]});
+}catch(err){
+	console.log('error while updating msgembed [2867]');
+	console.log(err);
+}
 										updateEmbed.setThumbnail(imgurl);
 										updateEmbed.setImage();
 	
@@ -2832,8 +2891,13 @@ if(!startup){
 									let secondMessage = await chan.messages.fetch(updatemsg);
 									
 									if (lastMessage.id == secondMessage.id){															
-										secondMessage.edit(new MessageEmbed(updateEmbed));
-										secondMessage.edit({embeds: [updateEmbed]});
+										try{
+											secondMessage.edit(new MessageEmbed(updateEmbed));
+											secondMessage.edit({embeds: [updateEmbed]});
+										}catch(err){
+											console.log('error while updating secondMessage [2898]');
+											console.log(err);
+										}
 									}else{
 										try{
 											secondMessage.delete();
@@ -3038,9 +3102,13 @@ if(!startup){
 
 						);
 
-
-						msgembed.edit(new MessageEmbed(updateEmbed));
-						msgembed.edit({embeds: [updateEmbed]});
+						try{
+							msgembed.edit(new MessageEmbed(updateEmbed));
+							msgembed.edit({embeds: [updateEmbed]});
+						}catch(err){
+							console.log('error while updating msgembed [3109]');
+							console.log(err);
+						}
 						
 
 						if(!(updatemsg == 'N/A')){
@@ -3051,8 +3119,13 @@ if(!startup){
 							authormsg = authormsg.split('').join(' ');
 							secondEmbed.setAuthor({name: authormsg})
 							secondEmbed.fields[1] ={ name: 'HIGH BIDDER', value: highbidder, inline: true}
-							secondMessage.edit(new MessageEmbed(secondEmbed));
-							secondMessage.edit({embeds: [secondEmbed]});
+							try{
+								secondMessage.edit(new MessageEmbed(secondEmbed));
+								secondMessage.edit({embeds: [secondEmbed]});	
+							}catch(err){
+								console.log('error while editing secondMessage');
+								console.log(err);
+							}
 						}
 						
 						var bidmsg;
@@ -3247,7 +3320,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 			if(qmsg.includes('dm'+reactmsgid)){
 				qmsg = qmsg.replace('dm'+reactmsgid,reactmsgid);
 				console.log('editing dbmsg for subscriberAdd');
-				dbmsg.edit(qmsg);
+				try{
+					dbmsg.edit(qmsg);
+				}catch(err){
+					console.log('error while editing dbmsg for subscriberadd');
+					console.log(err);
+				}
 			}
 		}else if(reaction.emoji.name === '🔴'){
 			let qUser = reaction.message.embeds[0].fields[0].value;
@@ -3285,7 +3363,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 						}
 					}
 					console.log('editing dbmsg for auction remove');
-					dbmsg.edit(qmsg);
+					try{
+						dbmsg.edit(qmsg);
+					}catch(err){
+						console.log('error while removing auction');
+						console.log(err);
+					}
 				} else{
 					console.log('Queue message was not in database');
 				}
