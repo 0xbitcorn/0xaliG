@@ -1843,11 +1843,11 @@ async function getNextAuction() {
 
 						var skipitem = false;
 						var reaction = await queueitem.reactions.cache.get('🌿');
-						var users = await reaction.users.fetch();
 
 						if(reaction.count > 1){
-							users.each(async(user) =>{
-								if(user.id == botid){
+							var reactusers = await reaction.users.fetch();
+							reactusers.each(async(user) =>{
+								if(reactusers.id == botid){
 									skipitem = true;
 
 									try{
