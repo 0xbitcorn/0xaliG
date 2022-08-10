@@ -1870,15 +1870,22 @@ async function getNextAuction() {
 						}
 
 						// check if tagged with 🌿
-
-						var skipitem = false;
-						var reactcount = await qchannel.messages.fetch(i.replace('dm','')).reactions.get('🌿').count;
 					
 						try{
+							
+						var skipitem = false;
+
+						let tempmsg = await qchannel.messages.fetch(i.replace('dm',''));
+						//console.log('got message');
+						var tempreact = await tempmsg.reactions.cache.get('🌿');
+						//console.log('got reactions, count: ' + dmreaction.count);
+
+						var reactcount = await tempreact.count;
+
 							console.log('herb count: ' + reactcount);
 						
 							if(reactcount > 0){
-								var reactusers = await qchannel.messages.fetch(i.replace('dm','')).reactions.get('🌿').users.fetch();
+								var reactusers = await tempreact.users.fetch();
 								reactusers.each(async(user) =>{
 									if(reactusers.id == botid){
 										skipitem = true;
