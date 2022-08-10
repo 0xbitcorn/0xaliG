@@ -1838,16 +1838,39 @@ async function getNextAuction() {
 							forcestart = '';
 							return true;
 						}
-						//console.log('embed timestamp: ' + qembed.timestamp);
-						if(qembed.timestamp == null){
-							itemselected = i;
-							return true;}
-						let now = moment();
-		
-						if(now.isSameOrAfter(qembed.timestamp)){
-							itemselected = i;
-							return true;
-						}; 
+
+						// check if tagged with 🌿
+
+						var skipitem = false;
+						var reaction = await queueitem.reactions.cache.get('🌿');
+						var users = await reaction.users.fetch();
+
+						if(reaction.count > 1){
+							users.each(async(user) =>{
+								if(user.id == botid){
+									skipitem = true;
+
+									try{
+										queueitem.delete();
+									}catch(err){
+										console.log('queueitem.delete error [1854]');
+										console.log(err);
+									}
+								}});
+						}
+
+						if(!(skipitem)){
+							//console.log('embed timestamp: ' + qembed.timestamp);
+							if(qembed.timestamp == null){
+								itemselected = i;
+								return true;}
+								let now = moment();
+
+							if(now.isSameOrAfter(qembed.timestamp)){
+								itemselected = i;
+								return true;
+							};
+						}
 				}catch(err){
 						console.log('had error: ' + err);
 					//await client.channels.cache.get(logchannel).send(err).catch(/*Your Error handling if the Message isn't returned, sent, etc.*/);
@@ -3288,7 +3311,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 		if(user.id == alig && reaction.emoji.name === '🌿'){
 			console.log('Removing Item Sent to Auction: ' + reaction.message.id);
 			try{
-				await reaction.message.delete();
+				reaction.message.delete();
 			}catch(err){
 				console.log('delete error from herb tag');
 				console.log(err);
@@ -3412,7 +3435,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 					console.log('Queue message was not in database');
 				}
 				try{
-					await reaction.message.delete();					
+					reaction.message.delete();					
 				}catch(err){
 					console.log('delete error [3409]');
 					console.log(err);
