@@ -1031,7 +1031,12 @@ async function dbSet(msgid, highbid, highbidder, reserve, updatemsg){//, auction
 	
 		var dbstr = Array.isArray(db) ? db.join(',') : "NO CURRENT AUCTION";
 		console.log('editing dbmsg for dbSet');
-		dbmsg.edit(dbstr);
+		try{
+			dbmsg.edit(dbstr);
+		}catch(err){
+			console.log('error while writing to dbmsg');
+			console.log(err);
+		}
 	return;
 }
 
