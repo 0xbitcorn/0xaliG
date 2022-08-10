@@ -2081,9 +2081,10 @@ var startup = false;
 	// ALI-G STARTUP
 	if(message.author == botid && message.content.includes('Iz awkshun time!')){
 		console.log('Startup Message Sent');	
-		await message.delete();
-
+		
 		try{
+			await message.delete();
+
 			const bitcornuser = await client.users.fetch(bitcorn).catch(() => null);
 				
 			if (!bitcornuser) return;
@@ -2149,7 +2150,12 @@ if(!startup){
 									)
 
 			let statEmbed = message.channel.send({ embeds: [sEmbed] });
-			message.delete();
+			try{
+				message.delete();
+			}catch(err){
+				console.log('delete error [2154]');
+				console.log(err);
+			}
 		}
 		
 		if(message.author.id == bitcorn){
@@ -2791,7 +2797,7 @@ if(!startup){
 													{ name: 'SELLER', value: '<@' + sellerid + '>', inline: true },
 													{ name: 'HIGH BIDDER', value: winningbidder, inline: true}
 												)
-												.setFooter({text: 'Report any issues/suggestions to @BTCornBLAIQchnz\naliG.loopring.eth'})
+												.setFooter({text: 'Report any issues/suggestions to bitcorn\naliG.loopring.eth'})
 												let endEmbed = await achan.send({ embeds: [eEmbed] });
 											try{
 												let endImg = await achan.send({files: [endimage]});
@@ -3022,7 +3028,10 @@ try{
 				// new code added 8/9/2022 to handle a delay in setting the database message at auction start
 				if(!(processingauction == '') && amsg == 'NO CURRENT AUCTION'){
 					try{
-						message.channel.send('man... u speedy, let me finish this puff, then i gotz you', {ephemeral: true});
+						await message.react('<a:LOADING:986706895492505621>');
+						message.reply({
+							content: 'man... u speedy, let me finish this puff, then i gotz you',
+							ephemeral: true});
 					}catch(err){
 						console.log('error with ephemeral');
 						console.log(err);
@@ -3252,9 +3261,14 @@ try{
 				}else{
 					console.log('ineligible bidder: special event');
 					let sorrybra = await message.reply('Sorry bra, dis iz a limited access event.');
-					await message.delete();
-					await sleep(2000);
-					await sorrybra.delete();
+					try{
+						await message.delete();
+						await sleep(2000);
+						await sorrybra.delete();
+					}catch(err){
+						console.log('sorrybra delete error');
+						console.log(err);
+					}
 				}
 			}	
 		}
@@ -3273,7 +3287,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	if(user.bot){
 		if(user.id == alig && reaction.emoji.name === '🌿'){
 			console.log('Removing Item Sent to Auction: ' + reaction.message.id);
-			await reaction.message.delete();
+			try{
+				await reaction.message.delete();
+			}catch(err){
+				console.log('delete error from herb tag');
+				console.log(err);
+			}
 		}
 		return;
 	}
@@ -3392,7 +3411,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 				} else{
 					console.log('Queue message was not in database');
 				}
-				await reaction.message.delete();
+				try{
+					await reaction.message.delete();					
+				}catch(err){
+					console.log('delete error [3409]');
+					console.log(err);
+				}
 			}else{
 				reaction.users.remove(user).catch(console.log('user reaction not found.'));
 			}
