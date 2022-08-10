@@ -1875,14 +1875,14 @@ async function getNextAuction() {
 							
 						var skipitem = false;
 
-						let tempmsg = await qchannel.messages.fetch(i.replace('dm',''));
+						//let tempmsg = await qchannel.messages.fetch(i.replace('dm',''));
 						//console.log('got message');
-						var tempreact = await tempmsg.reactions.cache.get('🌿');
+						//var tempreact = await tempmsg.reactions.cache.get('🌿');
 						//console.log('got reactions, count: ' + dmreaction.count);
 
-						var reactcount = await tempreact.count;
+						var reactcount = 0; //await tempreact.count;
 
-							console.log('herb count: ' + reactcount);
+							//console.log('herb count: ' + reactcount);
 						
 							if(reactcount > 0){
 								var reactusers = await tempreact.users.fetch();
