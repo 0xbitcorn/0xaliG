@@ -1844,20 +1844,25 @@ async function getNextAuction() {
 						var skipitem = false;
 						var reaction = await queueitem.reactions.cache.get('🌿');
 
-						if(reaction.count > 1){
-							var reactusers = await reaction.users.fetch();
-							reactusers.each(async(user) =>{
-								if(reactusers.id == botid){
-									skipitem = true;
-
-									try{
-										queueitem.delete();
-									}catch(err){
-										console.log('queueitem.delete error [1854]');
-										console.log(err);
-									}
-								}});
+						try{
+							if(reaction.count > 1){
+								var reactusers = await reaction.users.fetch();
+								reactusers.each(async(user) =>{
+									if(reactusers.id == botid){
+										skipitem = true;
+	
+										try{
+											queueitem.delete();
+										}catch(err){
+											console.log('queueitem.delete error [1854]');
+											console.log(err);
+										}
+									}});
+							}
+						}catch(err){
+							console.log('no reactions');
 						}
+						
 
 						if(!(skipitem)){
 							//console.log('embed timestamp: ' + qembed.timestamp);
