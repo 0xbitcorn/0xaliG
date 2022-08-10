@@ -2088,7 +2088,7 @@ var startup = false;
 				
 			if (!bitcornuser) return;
 			let dmcontent = "aliG rebooted";
-			await user.send(dmcontent).catch(() => {
+			await bitcornuser.send(dmcontent).catch(() => {
 				console.log("unable to send bitcorn DM");
 			});	
 		}catch(err){
