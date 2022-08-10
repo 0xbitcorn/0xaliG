@@ -3022,7 +3022,7 @@ try{
 				// new code added 8/9/2022 to handle a delay in setting the database message at auction start
 				if(!(processingauction == '') && amsg == 'NO CURRENT AUCTION'){
 					try{
-						message.reply('man... u speedy, let me finish this puff, then i gotz you', {ephemeral: true});
+						message.channel.send('man... u speedy, let me finish this puff, then i gotz you', {ephemeral: true});
 					}catch(err){
 						console.log('error with ephemeral');
 						console.log(err);
