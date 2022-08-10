@@ -2939,8 +2939,15 @@ if(!startup){
 				let amsg = dbmsg.content;
 				let isOverride = false;
 
-
-//amsg is not being set in a timely manner
+				// new code added 8/9/2022 to handle a delay in setting the database message at auction start
+				if(!(processingauction == '')){
+					while(amsg == 'NO CURRENT AUCTION' && !(processingauction == '')){
+						console.log('auction appears live, but database is not populated (sleep 0.5s)');
+						sleep(500);
+						dbmsg = await dbchannel.messages.fetch(currentauctiondbmsg);
+						amsg = dbmsg.content;
+					}
+				} 
 
 				if(!(amsg == 'NO CURRENT AUCTION') && !(auctionEnded)){
 					if(!(client.user.presence.status == 'dnd')){
@@ -3141,7 +3148,7 @@ if(!startup){
 						}
 					}
 				} else{
-					message.reply('No awkshun found, whatcha bittin on?');
+					message.reply('No awkshun found, whatcha bittin on? ');
 				}
 
 			}else{
